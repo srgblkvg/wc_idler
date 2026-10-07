@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: azeroth
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a random DB password}
+      POSTGRES_DB: azeroth
+      PGAPP_PASSWORD: ${PGAPP_PASSWORD:?Set a separate random application DB password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/init-roles.sh:/docker-entrypoint-initdb.d/01-roles.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U azeroth -d azeroth']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://azeroth:${POSTGRES_PASSWORD}@postgres:5432/azeroth
+    command: ['npm', 'run', 'db:migrate', '-w', '@azeroth/server']
+    depends_on:
+      postgres:
+        condition: service_healthy
+  api:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://azeroth_app:${PGAPP_PASSWORD}@postgres:5432/azeroth
+      MIGRATE_ON_START: 'false'
+      TRUST_PROXY: '1'
+      APP_ORIGIN: https://${DOMAIN:?Set your DNS hostname}
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+  web:
+    build:
+      context: .
+      dockerfile: deploy/web.Dockerfile
+    environment:
+      DOMAIN: ${DOMAIN:?Set your DNS hostname}
+    ports: ['80:80', '443:443', '443:443/udp']
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api]
+    restart: unless-stopped
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

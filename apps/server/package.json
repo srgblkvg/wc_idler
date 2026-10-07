@@ -1,0 +1,31 @@
+{
+  "name": "@azeroth/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
+    "start": "tsx --env-file-if-exists=../../.env src/index.ts",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate": "tsx --env-file-if-exists=../../.env src/migrate-cli.ts",
+    "db:cleanup": "tsx --env-file-if-exists=../../.env src/cleanup-cli.ts"
+  },
+  "dependencies": {
+    "@azeroth/game": "*",
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/rate-limit": "^10.3.0",
+    "fastify": "^5.6.1",
+    "pg": "^8.16.3",
+    "tsx": "^4.20.6",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "@types/pg": "^8.15.5",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3"
+  }
+}
