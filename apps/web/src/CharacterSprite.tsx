@@ -21,7 +21,30 @@ const ATLAS_HEIGHT = 1024;
 const FRAME_WIDTH = 220;
 const FRAME_HEIGHT = 280;
 const NECK: Point = [119, 65];
-const HEAD_JOIN: Point = [119, 70];
+const HEAD_JOIN: Point = [119, 76];
+const BELT_BOX: Box = [14, 230, 1508, 562];
+const BELT_ANCHOR: Point = [775, 420];
+// Waist anchors are measured in each source outfit, like its collar and fists.
+const WAISTS: Record<Appearance['gender'], Record<string, Point>> = {
+  male: {
+    cloth: [333, 241],
+    chain: [780, 238],
+    leather: [1264, 238],
+    hunter: [330, 279],
+    watch: [767, 280],
+    oath: [1228, 279],
+    sun: [787, 213],
+  },
+  female: {
+    cloth: [333, 718],
+    chain: [780, 718],
+    leather: [1264, 720],
+    hunter: [330, 759],
+    watch: [767, 760],
+    oath: [1228, 759],
+    sun: [787, 722],
+  },
+};
 
 // Each painted part is registered to a neck or grip anchor. Adding an outfit is
 // an art-manifest change; equipment selection still comes from domain metadata.
@@ -277,17 +300,27 @@ export function CharacterSprite({
   const legs = player ? equippedItem(player, 'legs') : null;
   const feet = player ? equippedItem(player, 'feet') : null;
   const offhand = player ? equippedItem(player, 'offhand') : null;
+  const belt = player ? equippedItem(player, 'belt') : null;
   const material = armor?.armorStyle ?? 'cloth';
   const armorVariant = armor?.armorVariant;
   const outfit = armorVariant
     ? EXTRA_OUTFITS[look.gender][armorVariant]
     : OUTFITS[look.gender][material];
-  const outfitFile =
+  const baseOutfitFile =
     armorVariant === 'sun'
       ? '/art/characters/outfits-sun-upper.webp'
       : armorVariant
         ? '/art/characters/outfits-extra-upper.webp'
         : '/art/characters/outfits-upper.webp';
+  const outfitFile = belt
+    ? baseOutfitFile.replace('-upper.webp', '-beltless.webp')
+    : baseOutfitFile;
+  const waist = WAISTS[look.gender][armorVariant ?? material]!;
+  const beltPosition: Point = [
+    NECK[0] + (waist[0] - outfit.neck[0]) * outfit.scale,
+    NECK[1] + (waist[1] - outfit.neck[1]) * outfit.scale,
+  ];
+  const beltScale = (look.gender === 'female' ? 46 : 49) / BELT_BOX[2];
   const bodyPosition = anchoredPosition(outfit.box, outfit.neck, NECK, outfit.scale);
   const grip: Point = [
     NECK[0] + (outfit.grip[0] - outfit.neck[0]) * outfit.scale,
@@ -321,16 +354,19 @@ export function CharacterSprite({
       : weaponArt.grip
     : null;
   const helmetBox = helmet ? HELMETS[wearStyle(helmet)] : null;
-  const gloveArt = gloves ? GLOVES[wearStyle(gloves)] : null;
+  const gloveArt = gloves || belt ? GLOVES[wearStyle(gloves)] : null;
   const pants = LOWER_BODY[wearStyle(legs)];
   const boots = LOWER_BODY[wearStyle(feet)];
-  const pantsBox: Box = [pants.box[0], pants.box[1], pants.box[2], pants.knee - pants.box[1] + 4];
+  const pantsBox: Box = [pants.box[0], pants.box[1], pants.box[2], pants.knee - pants.box[1] + 18];
   const bootsBox: Box = [
     boots.box[0],
     boots.knee,
     boots.box[2],
     boots.box[1] + boots.box[3] - boots.knee,
   ];
+  const starterPants: Box = look.gender === 'male' ? [186, 290, 288, 75] : [188, 802, 291, 74];
+  const starterLower = !legs && !feet;
+  const lowerScale = 0.31;
   const starterBoots: Box = look.gender === 'male' ? [186, 350, 288, 161] : [188, 862, 291, 157];
   const offhandArt = offhand?.offhandType ? OFFHANDS[offhand.offhandType] : null;
   return (
@@ -345,6 +381,7 @@ export function CharacterSprite({
       data-gloves={gloves?.id ?? 'none'}
       data-legs={legs?.id ?? 'none'}
       data-feet={feet?.id ?? 'none'}
+      data-belt={belt?.id ?? 'none'}
       data-offhand={offhand?.id ?? 'none'}
       data-hair={look.hair}
       data-hairstyle={look.hairStyle}
@@ -374,18 +411,32 @@ export function CharacterSprite({
           />
         )}
         <AtlasPart
-          file={ACCESSORIES_FILE}
-          box={pantsBox}
-          position={[114 - pantsBox[2] * 0.175, 154]}
-          size={[pantsBox[2] * 0.35, 51]}
+          file={starterLower ? '/art/characters/outfits.webp' : ACCESSORIES_FILE}
+          box={starterLower ? starterPants : pantsBox}
+          position={
+            starterLower
+              ? [53, 200 - (60 * 122) / starterPants[2]]
+              : [
+                  114 - (pantsBox[2] * lowerScale) / 2,
+                  200 - (pants.knee - pants.box[1]) * lowerScale,
+                ]
+          }
+          size={
+            starterLower
+              ? [122, (starterPants[3] * 122) / starterPants[2]]
+              : [pantsBox[2] * lowerScale, pantsBox[3] * lowerScale]
+          }
           className="character-legs"
           testId="legs-layer"
         />
         <AtlasPart
           file={feet ? ACCESSORIES_FILE : '/art/characters/outfits.webp'}
           box={feet ? bootsBox : starterBoots}
-          position={[feet ? 114 - bootsBox[2] * 0.175 : 53, 200]}
-          size={[feet ? bootsBox[2] * 0.35 : 122, 70]}
+          position={[feet ? 114 - (bootsBox[2] * lowerScale) / 2 : 53, 200]}
+          size={[
+            feet ? bootsBox[2] * lowerScale : 122,
+            feet ? bootsBox[3] * lowerScale : (starterBoots[3] * 122) / starterBoots[2],
+          ]}
           className="character-feet"
           testId="feet-layer"
         />
@@ -398,20 +449,38 @@ export function CharacterSprite({
           testId="head-layer"
         />
         <AtlasPart
-          file={headFile}
-          box={[headColumn.neckX, headRow.neckY - 59, 6, 6]}
-          position={[108, 64]}
-          size={[23, 16]}
-          className="character-neck"
-        />
-        <AtlasPart
           file={outfitFile}
           box={outfit.box}
           position={bodyPosition}
           size={[outfit.box[2] * outfit.scale, outfit.box[3] * outfit.scale]}
-          className="character-body"
+          className="character-body-back"
           testId="armor-layer"
         />
+        <AtlasPart
+          file={outfitFile}
+          box={[
+            outfit.box[0],
+            outfit.neck[1] + 34,
+            outfit.box[2],
+            outfit.box[1] + outfit.box[3] - outfit.neck[1] - 34,
+          ]}
+          position={[bodyPosition[0], NECK[1] + 34 * outfit.scale]}
+          size={[
+            outfit.box[2] * outfit.scale,
+            (outfit.box[1] + outfit.box[3] - outfit.neck[1] - 34) * outfit.scale,
+          ]}
+          className="character-body"
+        />
+        {variant !== 'avatar' && belt && (
+          <AtlasPart
+            file="/art/characters/woven-belt.webp"
+            box={BELT_BOX}
+            position={anchoredPosition(BELT_BOX, BELT_ANCHOR, beltPosition, beltScale)}
+            size={[BELT_BOX[2] * beltScale, BELT_BOX[3] * beltScale]}
+            className="character-belt"
+            testId="belt-layer"
+          />
+        )}
         {helmetBox && (
           <AtlasPart
             file={ACCESSORIES_FILE}
@@ -429,22 +498,24 @@ export function CharacterSprite({
         )}
         {variant !== 'avatar' && gloveArt && (
           <>
-            <AtlasPart
-              file={ACCESSORIES_FILE}
-              box={gloveArt.main}
-              position={anchoredPosition(
-                gloveArt.main,
-                [
-                  gloveArt.main[0] + gloveArt.main[2] * 0.34,
-                  gloveArt.main[1] + gloveArt.main[3] * 0.5,
-                ],
-                grip,
-                0.19,
-              )}
-              size={[gloveArt.main[2] * 0.19, gloveArt.main[3] * 0.19]}
-              className="character-gloves"
-              testId="gloves-main-layer"
-            />
+            {gloves && (
+              <AtlasPart
+                file={ACCESSORIES_FILE}
+                box={gloveArt.main}
+                position={anchoredPosition(
+                  gloveArt.main,
+                  [
+                    gloveArt.main[0] + gloveArt.main[2] * 0.34,
+                    gloveArt.main[1] + gloveArt.main[3] * 0.5,
+                  ],
+                  grip,
+                  0.19,
+                )}
+                size={[gloveArt.main[2] * 0.19, gloveArt.main[3] * 0.19]}
+                className="character-gloves"
+                testId="gloves-main-layer"
+              />
+            )}
             <AtlasPart
               file={ACCESSORIES_FILE}
               box={gloveArt.off}

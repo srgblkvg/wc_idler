@@ -1,4 +1,4 @@
-import { Coins } from 'lucide-react';
+import { Coins } from './UiIcons';
 import type { EquipmentSlot, ItemDefinition } from '@azeroth/game';
 import { ItemArt } from './ItemArt';
 export const slotNames: Record<EquipmentSlot, string> = {

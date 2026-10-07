@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X } from './UiIcons';
 import { SKILL_BY_ID, type SkillId } from '@azeroth/game';
 import './skill-controls.css';
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { X } from 'lucide-react';
+import { X } from './UiIcons';
 import { MOB_BY_ID, type MobId } from '@azeroth/game';
 import { EnemySprite } from './CharacterSprite';
 import { Money } from './Common';

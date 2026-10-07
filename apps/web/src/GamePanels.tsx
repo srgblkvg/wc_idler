@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check } from './UiIcons';
 import {
   ITEM_BY_ID,
   MOB_BY_ID,

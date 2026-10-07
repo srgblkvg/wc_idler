@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check } from './UiIcons';
 import { ITEM_BY_ID, MOB_BY_ID, QUESTS, getDerivedStats, type QuestId } from '@azeroth/game';
 import { CharacterSprite } from './CharacterSprite';
 import { Meter, Money } from './Common';

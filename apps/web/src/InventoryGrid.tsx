@@ -2,6 +2,13 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Check,
+  ArmorIcon,
+  PantsIcon,
+  RingIcon,
+  EarringIcon,
+  BeltIcon,
+  CloakIcon,
+  AmuletIcon,
   ChevronLeft,
   ChevronRight,
   Footprints,
@@ -13,7 +20,7 @@ import {
   Shield,
   Sword,
   X,
-} from 'lucide-react';
+} from './UiIcons';
 import {
   ITEM_BY_ID,
   EQUIPMENT_SLOTS,
@@ -40,23 +47,23 @@ const EQUIPMENT_GROUPS = {
 const SLOT_ICONS = {
   weapon: Sword,
   offhand: Shield,
-  armor: Shield,
+  armor: ArmorIcon,
   helmet: HardHat,
   gloves: Hand,
-  legs: Footprints,
+  legs: PantsIcon,
   feet: Footprints,
-  ring1: Gem,
-  ring2: Gem,
-  earring1: Gem,
-  earring2: Gem,
-  belt: Gem,
-  cloak: Shield,
-  amulet: Gem,
+  ring1: RingIcon,
+  ring2: RingIcon,
+  earring1: EarringIcon,
+  earring2: EarringIcon,
+  belt: BeltIcon,
+  cloak: CloakIcon,
+  amulet: AmuletIcon,
 };
 const FILTERS = [
   { id: 'all', name: 'Все вещи', icon: Grid2X2 },
   { id: 'weapon', name: 'Оружие', icon: Sword },
-  { id: 'armor', name: 'Доспех', icon: HardHat },
+  { id: 'armor', name: 'Доспех', icon: ArmorIcon },
   { id: 'offhand', name: 'Левая рука', icon: Shield },
   { id: 'accessories', name: 'Украшения', icon: Gem },
 ] as const;
@@ -347,7 +354,7 @@ export function EquipmentSlots({
                 ) : blocked ? (
                   <LockKeyhole size={23} strokeWidth={1.2} />
                 ) : (
-                  <Icon size={25} strokeWidth={1.2} />
+                  <Icon size={36} />
                 )}
               </button>
               {showLabels && <small>{slotNames[slot]}</small>}
@@ -435,7 +442,7 @@ export function Inventory({ player, pending, act }: GameProps) {
                       setPage(0);
                     }}
                   >
-                    <Icon size={17} strokeWidth={1.5} />
+                    <Icon size={28} />
                   </button>
                 );
               })}

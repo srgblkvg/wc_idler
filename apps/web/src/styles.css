@@ -55,7 +55,7 @@ button {
     background 0.16s,
     border-color 0.16s;
 }
-button svg {
+button :is(svg, .ui-icon, .ui-control) {
   flex-shrink: 0;
 }
 ::selection {
@@ -161,7 +161,7 @@ button svg {
   color: #8b977f;
   white-space: nowrap;
 }
-.header-character > svg {
+.header-character > :is(svg, .ui-icon, .ui-control) {
   color: #89957a;
   margin-left: 8px;
 }
@@ -882,7 +882,7 @@ button svg {
   color: #7e9470;
   margin-top: 5px;
 }
-.camp-button svg {
+.camp-button :is(svg, .ui-icon, .ui-control) {
   color: #b8965a;
 }
 .page-map .region-panel {
@@ -1334,7 +1334,7 @@ button svg {
   padding: 18px 22px;
   border-bottom: 1px solid #3b4b32;
 }
-.drop-row > span {
+.drop-row > span:not(.item-art):not(.ui-icon):not(.ui-control) {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -2259,7 +2259,7 @@ button svg {
 .compact-quest-row.completed {
   opacity: 0.6;
 }
-.compact-quest-row > svg {
+.compact-quest-row > :is(svg, .ui-icon, .ui-control) {
   color: #98a97d;
 }
 .quest-number {
@@ -2404,10 +2404,10 @@ button svg {
   border-bottom: 1px solid #3b4a32;
   text-align: left;
 }
-.more-links button > svg:first-child {
+.more-links button > :is(svg, .ui-icon):first-child {
   color: #b2a476;
 }
-.more-links button > span {
+.more-links button > span:not(.ui-icon):not(.ui-control) {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -2422,7 +2422,7 @@ button svg {
 .more-links small {
   display: none;
 }
-.more-links button > svg:last-child {
+.more-links button > :is(svg, .ui-control):last-child {
   color: #8c9d79;
 }
 .more-status {
@@ -2476,7 +2476,7 @@ button svg {
     margin-left: 2px;
     overflow: hidden;
   }
-  .header-character > svg {
+  .header-character > :is(svg, .ui-icon, .ui-control) {
     display: none;
   }
   .header-portrait {
@@ -2519,7 +2519,7 @@ button svg {
     gap: 3px;
     font-size: 11px;
   }
-  .header-money .money svg {
+  .header-money .money :is(svg, .ui-icon) {
     width: 12px;
     height: 12px;
   }
@@ -2967,7 +2967,7 @@ button svg {
     font-size: 10px;
     gap: 2px;
   }
-  .header-money .money svg {
+  .header-money .money :is(svg, .ui-icon) {
     display: none;
   }
   .game-main {

@@ -15,7 +15,7 @@ import {
   Wifi,
   WifiOff,
   X,
-} from 'lucide-react';
+} from './UiIcons';
 import { xpForNextLevel, QUEST_BY_ID } from '@azeroth/game';
 import { CharacterSprite, DEFAULT_APPEARANCE, type Appearance } from './CharacterSprite';
 import { Money } from './Common';
@@ -344,7 +344,7 @@ export default function App() {
                     <div className="more-links">
                       {morePages.map(({ id, label, icon: Icon }) => (
                         <button key={id} onClick={() => setPage(id)}>
-                          <Icon size={23} strokeWidth={1.5} />
+                          <Icon size={32} />
                           <span>
                             <strong>{label}</strong>
                           </span>
@@ -368,7 +368,7 @@ export default function App() {
               className={page === id ? 'active' : ''}
               onClick={() => setPage(id)}
             >
-              <Icon size={20} strokeWidth={1.6} />
+              <Icon size={30} />
               <span>{label}</span>
               {id === 'quests' && readyQuest && <i />}
             </button>
@@ -381,7 +381,7 @@ export default function App() {
               className={['more', 'hero', 'skills', 'events'].includes(page) ? 'active' : ''}
               onClick={() => setPage('more')}
             >
-              <MoreHorizontal size={21} />
+              <MoreHorizontal size={30} />
               <span>Ещё</span>
             </button>
           )}

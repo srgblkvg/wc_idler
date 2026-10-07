@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CirclePause, Flame, MapPin, Sword, X } from 'lucide-react';
+import { CirclePause, Flame, MapPin, Sword, X } from './UiIcons';
 import {
   ITEM_BY_ID,
   MOB_BY_ID,

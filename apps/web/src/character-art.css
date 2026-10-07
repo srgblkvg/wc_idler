@@ -44,8 +44,8 @@
 .character-head {
   z-index: 3;
 }
-.character-neck {
-  z-index: 3;
+.character-body-back {
+  z-index: 2;
 }
 .character-sprite[data-hairstyle='braid'] .character-head {
   /* Exclude the previous row's braid tip without clipping this row's crown. */
@@ -61,14 +61,17 @@
 .character-feet {
   z-index: 1;
 }
-.character-gloves {
+.character-belt {
   z-index: 5;
 }
-.character-helmet {
+.character-gloves {
   z-index: 6;
 }
-.character-offhand {
+.character-helmet {
   z-index: 7;
+}
+.character-offhand {
+  z-index: 8;
 }
 .character-sprite.is-portrait .character-art {
   transform: translate(-50%, -50%) scale(-2.15, 2.15);
