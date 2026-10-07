@@ -1,3 +1,4 @@
+import staticFiles from '@fastify/static';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import Fastify, { type FastifyRequest } from 'fastify';
 import cookie from '@fastify/cookie';
@@ -53,6 +54,7 @@ interface AppOptions {
   allowedOrigins?: string[];
   secureCookies?: boolean;
   logger?: boolean;
+  clientDirectory?: string;
 }
 
 function digest(value: string): string {
@@ -91,6 +93,9 @@ export function buildApp(options: AppOptions) {
       process.env.TRUST_PROXY === '1' ? (_address: string, hop: number) => hop === 0 : false,
     logger: options.logger ? { redact: ['req.headers.cookie', 'res.headers.set-cookie'] } : false,
   });
+  if (options.clientDirectory) {
+    app.register(staticFiles, { root: options.clientDirectory, dotfiles: 'deny' });
+  }
   app.register(cookie);
   app.register(helmet, { contentSecurityPolicy: false });
   app.register(rateLimit, { max: 120, timeWindow: '1 minute' });

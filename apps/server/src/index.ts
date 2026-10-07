@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { buildApp } from './app.js';
 import { createPool } from './db.js';
 import { migrate } from './migrate.js';
@@ -7,7 +8,14 @@ if (process.env.NODE_ENV === 'production' && !process.env.APP_ORIGIN) {
 }
 const pool = createPool();
 pool.on('error', (error) => console.error('PostgreSQL pool error:', error.message));
-const app = buildApp({ pool, logger: true });
+const app = buildApp({
+  pool,
+  logger: true,
+  clientDirectory:
+    process.env.SERVE_CLIENT === 'true'
+      ? fileURLToPath(new URL('../../web/dist/', import.meta.url))
+      : undefined,
+});
 try {
   if (process.env.MIGRATE_ON_START !== 'false') await migrate(pool);
   await app.listen({ port: Number(process.env.PORT ?? 3001), host: process.env.HOST ?? '0.0.0.0' });
