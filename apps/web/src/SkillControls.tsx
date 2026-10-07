@@ -4,12 +4,45 @@ import { X } from 'lucide-react';
 import { SKILL_BY_ID, type SkillId } from '@azeroth/game';
 import './skill-controls.css';
 
+type SkillFrame = {
+  source: string;
+  atlas: readonly [number, number];
+  bounds: readonly [number, number, number, number];
+};
+const SKILL_ART: Record<SkillId, SkillFrame> = {
+  heavyStrike: {
+    source: '/art/skills-atlas.webp',
+    atlas: [1536, 1024],
+    bounds: [29, 121, 523, 755],
+  },
+  ward: {
+    source: '/art/skills-atlas.webp',
+    atlas: [1536, 1024],
+    bounds: [510, 150, 503, 625],
+  },
+  mend: {
+    source: '/art/skills-atlas.webp',
+    atlas: [1536, 1024],
+    bounds: [1064, 158, 452, 670],
+  },
+  flurry: {
+    source: '/art/skills-extra.webp',
+    atlas: [1774, 887],
+    bounds: [55, 77, 777, 727],
+  },
+  secondWind: {
+    source: '/art/skills-extra.webp',
+    atlas: [1774, 887],
+    bounds: [908, 48, 838, 802],
+  },
+};
+
 function SkillGlyph({ id }: { id: SkillId }) {
-  const [x, y, width, height] = {
-    heavyStrike: [16, 150, 493, 714],
-    ward: [517, 195, 493, 584],
-    mend: [1060, 165, 465, 669],
-  }[id];
+  const {
+    source,
+    atlas: [atlasWidth, atlasHeight],
+    bounds: [x, y, width, height],
+  } = SKILL_ART[id];
   const size = Math.max(width, height);
   return (
     <span className="skill-art" data-skill-art={id} aria-hidden="true">
@@ -17,8 +50,9 @@ function SkillGlyph({ id }: { id: SkillId }) {
         style={{
           width: `${(width / size) * 100}%`,
           height: `${(height / size) * 100}%`,
-          backgroundSize: `${(1536 / width) * 100}% ${(1024 / height) * 100}%`,
-          backgroundPosition: `${(x / (1536 - width)) * 100}% ${(y / (1024 - height)) * 100}%`,
+          backgroundImage: `url("${source}")`,
+          backgroundSize: `${(atlasWidth / width) * 100}% ${(atlasHeight / height) * 100}%`,
+          backgroundPosition: `${atlasWidth === width ? 0 : (x / (atlasWidth - width)) * 100}% ${atlasHeight === height ? 0 : (y / (atlasHeight - height)) * 100}%`,
         }}
       />
     </span>
@@ -44,6 +78,7 @@ export function SkillButton({
       className={`skill-pill skill-icon skill-${id} ${active ? 'used' : ''}`}
       aria-label={skill.name}
       aria-describedby={tooltip}
+      aria-haspopup={onClick ? 'dialog' : undefined}
       onClick={onClick}
       data-cooldown={cooldown}
     >
@@ -67,80 +102,92 @@ export function SkillDetails({
   id,
   onClose,
   children,
+  source,
 }: {
   id: SkillId;
   onClose: () => void;
   children?: ReactNode;
+  source?: string;
 }) {
   const skill = SKILL_BY_ID[id];
   const title = useId();
-  const dialog = useRef<HTMLDivElement>(null);
-  const close = useRef(onClose);
-  close.current = onClose;
+  const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    dialog.current?.querySelector<HTMLButtonElement>('button')?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close.current();
-      if (event.key !== 'Tab' || !dialog.current) return;
-      const buttons = [
-        ...dialog.current.querySelectorAll<HTMLElement>(
-          'button:not(:disabled), [href], [tabindex="0"]',
-        ),
-      ];
-      const first = buttons[0],
-        last = buttons[buttons.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      }
-      if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
-      }
-    };
-    document.addEventListener('keydown', onKey);
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const element = dialog.current;
+    element?.showModal();
+    element?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
     return () => {
-      document.removeEventListener('keydown', onKey);
-      previous?.focus();
+      element?.close();
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
     };
   }, []);
   return createPortal(
-    <div className="skill-dialog-backdrop" onClick={onClose}>
-      <div
-        className="skill-dialog"
-        ref={dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={title}
-        onClick={(event) => event.stopPropagation()}
+    <dialog
+      className="skill-dialog"
+      ref={dialog}
+      aria-labelledby={title}
+      data-testid="skill-detail"
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      onClick={(event) => {
+        const bounds = event.currentTarget.getBoundingClientRect();
+        if (
+          event.target === event.currentTarget &&
+          (event.clientX < bounds.left ||
+            event.clientX > bounds.right ||
+            event.clientY < bounds.top ||
+            event.clientY > bounds.bottom)
+        )
+          onClose();
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== 'Tab') return;
+        const buttons = [
+          ...event.currentTarget.querySelectorAll<HTMLElement>(
+            'button:not(:disabled), [href], [tabindex="0"]',
+          ),
+        ];
+        const first = buttons[0];
+        const last = buttons.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+        event.stopPropagation();
+      }}
+    >
+      <button
+        type="button"
+        className="skill-dialog-close"
+        onClick={onClose}
+        aria-label="Закрыть описание"
       >
-        <button
-          type="button"
-          className="skill-dialog-close"
-          onClick={onClose}
-          aria-label="Закрыть описание"
-        >
-          <X size={20} />
-        </button>
-        <div className={`skill-detail-icon skill-${id}`}>
-          <SkillGlyph id={id} />
-        </div>
-        <h2 id={title}>{skill.name}</h2>
-        <p>{skill.description}</p>
-        <dl>
-          <div>
-            <dt>Сила</dt>
-            <dd>{skill.manaCost}</dd>
-          </div>
-          <div>
-            <dt>Перезарядка</dt>
-            <dd>{skill.cooldownTurns} хода</dd>
-          </div>
-        </dl>
-        {children && <div className="skill-dialog-action">{children}</div>}
+        <X size={20} />
+      </button>
+      <div className={`skill-detail-icon skill-${id}`}>
+        <SkillGlyph id={id} />
       </div>
-    </div>,
+      <h2 id={title}>{skill.name}</h2>
+      <p>{skill.description}</p>
+      {source && <p className="skill-detail-source">{source}</p>}
+      <dl>
+        <div>
+          <dt>Сила</dt>
+          <dd>{skill.manaCost}</dd>
+        </div>
+        <div>
+          <dt>Перезарядка</dt>
+          <dd>{skill.cooldownTurns} хода</dd>
+        </div>
+      </dl>
+      {children && <div className="skill-dialog-action">{children}</div>}
+    </dialog>,
     document.body,
   );
 }

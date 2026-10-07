@@ -4,7 +4,9 @@ import {
   ITEM_BY_ID,
   MOB_BY_ID,
   QUESTS,
-  SKILLS,
+  EQUIPMENT_SLOTS,
+  getAvailableSkills,
+  getEquippedItem,
   SKILL_BY_ID,
   getDerivedStats,
   type GameAction,
@@ -130,7 +132,14 @@ export function SkillsPanel({ player, pending, act }: GameProps) {
   const [detail, setDetail] = useState<SkillId | null>(null);
   const skill = detail ? SKILL_BY_ID[detail] : null;
   const selected = !!detail && player.skills.loadout.includes(detail);
-  const locked = !!skill && player.level < skill.requiredLevel;
+  const available = getAvailableSkills(player);
+  const source = detail
+    ? EQUIPMENT_SLOTS.map((slot) => getEquippedItem(player, slot))
+        .filter((item) => item?.grantedSkills.includes(detail))
+        .map((item) => item!.name)
+        .join(' · ')
+    : '';
+  const unavailable = !!detail && !available.includes(detail);
   const full = !selected && player.skills.loadout.length >= 2;
   return (
     <section className="view-panel skills-view">
@@ -140,26 +149,32 @@ export function SkillsPanel({ player, pending, act }: GameProps) {
         </h2>
       </header>
       <div className="skill-palette">
-        {SKILLS.map((entry) => (
-          <div
-            className={`skill-palette-entry ${player.skills.loadout.includes(entry.id) ? 'equipped' : ''} ${player.level < entry.requiredLevel ? 'locked' : ''}`}
-            key={entry.id}
-          >
-            <SkillButton id={entry.id} onClick={() => setDetail(entry.id)} />
-            {player.skills.loadout.includes(entry.id) && (
-              <span className="skill-equipped" aria-label="Выбран">
-                <Check size={13} />
-              </span>
-            )}
-          </div>
-        ))}
+        {available.map((id) => {
+          const entry = SKILL_BY_ID[id];
+          return (
+            <div
+              className={`skill-palette-entry ${player.skills.loadout.includes(entry.id) ? 'equipped' : ''}`}
+              key={entry.id}
+            >
+              <SkillButton id={entry.id} onClick={() => setDetail(entry.id)} />
+              {player.skills.loadout.includes(entry.id) && (
+                <span className="skill-equipped" aria-label="Выбран">
+                  <Check size={13} />
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
+      {available.length === 0 && (
+        <p className="empty-state">Наденьте снаряжение, чтобы открыть приёмы.</p>
+      )}
       {detail && skill && (
-        <SkillDetails id={detail} onClose={() => setDetail(null)}>
+        <SkillDetails id={detail} source={source} onClose={() => setDetail(null)}>
           <button
             className="button primary"
             data-testid={`skill-${detail}`}
-            disabled={pending || locked || full}
+            disabled={pending || unavailable || full}
             onClick={async () => {
               if (
                 await act({
@@ -172,8 +187,8 @@ export function SkillsPanel({ player, pending, act }: GameProps) {
                 setDetail(null);
             }}
           >
-            {locked
-              ? `Доступен с ${skill.requiredLevel} уровня`
+            {unavailable
+              ? 'Нужно надеть предмет'
               : selected
                 ? 'Убрать из боя'
                 : full

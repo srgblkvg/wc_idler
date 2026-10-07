@@ -12,6 +12,8 @@ import { GameError, parseAction } from './validation.js';
 import {
   ITEMS,
   MOBS,
+  MOB_BY_ID,
+  STATE_SCHEMA_VERSION,
   QUESTS,
   MAX_INVENTORY,
   MAX_LEVEL,
@@ -89,8 +91,11 @@ describe('battle turns', () => {
     expect(result.hp).toBe(player.hp);
     expect(result.encounter.round).toBe(1);
   });
-  it('uses Living Water below 35% health and spends mana before enemy retaliation', () => {
-    const player = makePlayer();
+  it('uses talisman healing below 35% health and spends mana before enemy retaliation', () => {
+    let player = makePlayer();
+    player.inventory.push({ instanceId: 'healing-talisman', itemId: 'wolf-fang' });
+    player = applyAction(player, { type: 'equip', itemInstanceId: 'healing-talisman' }, 0);
+    player = applyAction(player, { type: 'setSkills', skills: ['heavyStrike', 'mend'] }, 0);
     const result = resolveBattleTurn(
       { ...player, hp: 5, mana: 10, stats: getDerivedStats(player) },
       { mobId: 'wolf', hp: 22, maxHp: 22, round: 0 },
@@ -117,7 +122,10 @@ describe('battle turns', () => {
 
 describe('time and deterministic simulation', () => {
   it('rejects incompatible saves instead of silently interpreting a new schema', () => {
-    const incompatible = { ...makePlayer(), schemaVersion: 3 } as unknown as PlayerState;
+    const incompatible = {
+      ...makePlayer(),
+      schemaVersion: STATE_SCHEMA_VERSION + 1,
+    } as unknown as PlayerState;
     expect(() => advancePlayer(incompatible, TICK_MS)).toThrowError(
       expect.objectContaining({ code: 'STATE_VERSION_UNSUPPORTED' }),
     );
@@ -209,7 +217,9 @@ describe('quest and equipment progression', () => {
       });
     const next = advancePlayer(player, 60_000, () => 0);
     expect(next.inventory).toHaveLength(MAX_INVENTORY);
-    expect(next.copper).toBe(next.totalKills * 14);
+    expect(next.copper).toBe(
+      next.totalKills * (MOB_BY_ID.wolf.copper + MOB_BY_ID.wolf.loot.length * 5),
+    );
     expect(next.log.some((entry) => entry.message.includes('Сумка полна'))).toBe(true);
   });
   it('respects both loot probability extremes with a controlled RNG', () => {
@@ -218,11 +228,37 @@ describe('quest and equipment progression', () => {
     const noDrops = advancePlayer(original, 60_000, () => 0.5);
     expect(guaranteedDrops.totalKills).toBeGreaterThan(0);
     expect(guaranteedDrops.inventory).toHaveLength(
-      original.inventory.length + guaranteedDrops.totalKills * 2,
+      original.inventory.length + guaranteedDrops.totalKills * MOB_BY_ID.wolf.loot.length,
     );
     expect(noDrops.totalKills).toBeGreaterThan(0);
     expect(noDrops.inventory).toEqual(original.inventory);
   });
+  it.each([
+    ['wolf', 'hunting-coat'],
+    ['kobold', 'watch-mail'],
+    ['defias', 'oath-lamellar'],
+  ] as const)(
+    'awards additional armor from %s and enforces its level requirement',
+    (mobId, itemId) => {
+      const beginner = makePlayer();
+      beginner.inventory.push({ instanceId: 'new-armor', itemId });
+      expect(() =>
+        applyAction(beginner, { type: 'equip', itemInstanceId: 'new-armor' }, 0),
+      ).toThrow();
+      const veteran = { ...makePlayer(), level: 10, hp: 150, mana: 75 };
+      const hunting = applyAction(veteran, { type: 'startHunt', mobId }, 0);
+      const rewarded = advancePlayer(hunting, 60_000, () => 0);
+      const instance = rewarded.inventory.find((item) => item.itemId === itemId);
+      expect(instance).toBeDefined();
+      const equipped = applyAction(
+        rewarded,
+        { type: 'equip', itemInstanceId: instance!.instanceId },
+        60_000,
+      );
+      expect(equipped.equipment.armor).toBe(instance!.instanceId);
+      expect(getDerivedStats(equipped).armor).toBeGreaterThan(getDerivedStats(veteran).armor);
+    },
+  );
   it('keeps XP and resources bounded at the level cap', () => {
     const player = advancePlayer(huntingPlayer(), MAX_OFFLINE_MS);
     expect(player.level).toBeLessThanOrEqual(MAX_LEVEL);

@@ -1,12 +1,28 @@
 import { Coins } from 'lucide-react';
-import type { ItemDefinition } from '@azeroth/game';
+import type { EquipmentSlot, ItemDefinition } from '@azeroth/game';
 import { ItemArt } from './ItemArt';
-export const slotNames = { weapon: 'Оружие', armor: 'Доспех', trinket: 'Оберег' };
-export const rarityNames = {
+export const slotNames: Record<EquipmentSlot, string> = {
+  weapon: 'Оружие',
+  offhand: 'Левая рука',
+  armor: 'Доспех',
+  helmet: 'Шлем',
+  gloves: 'Перчатки',
+  legs: 'Штаны',
+  feet: 'Обувь',
+  ring1: 'Кольцо 1',
+  ring2: 'Кольцо 2',
+  earring1: 'Серьга 1',
+  earring2: 'Серьга 2',
+  belt: 'Пояс',
+  cloak: 'Плащ',
+  amulet: 'Амулет',
+};
+export const rarityNames: Record<ItemDefinition['rarity'], string> = {
   common: 'Обычный',
   uncommon: 'Необычный',
   rare: 'Редкий',
   epic: 'Эпический',
+  legendary: 'Легендарный',
 };
 export function Meter({
   value,

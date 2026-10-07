@@ -59,8 +59,7 @@
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  box-shadow: inset 0 0 18px #131c1555;
-  background: linear-gradient(0deg, #10181165, transparent 25%);
+  background: linear-gradient(0deg, #10181125, transparent 18%);
 }
 .battle-arena .fighter-portrait .character-sprite,
 .battle-arena .fighter-portrait .enemy-sprite {
@@ -71,7 +70,7 @@
   max-width: none;
   margin: 0;
   overflow: visible;
-  filter: drop-shadow(0 8px 4px #0b120b66);
+  filter: none;
 }
 .battle-arena .fighter .fighter-name {
   position: static;

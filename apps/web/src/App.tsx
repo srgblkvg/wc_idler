@@ -119,7 +119,7 @@ export default function App() {
             aria-label={`Персонаж ${player.name}`}
           >
             <span className="header-portrait">
-              <CharacterSprite player={player} portrait />
+              <CharacterSprite player={player} variant="avatar" />
             </span>
             <span className="header-identity">
               <strong>{player.name}</strong>

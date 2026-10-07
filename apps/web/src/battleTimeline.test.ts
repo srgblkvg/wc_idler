@@ -33,7 +33,22 @@ const snapshot = (extra: Partial<BattleSnapshot> = {}): BattleSnapshot => ({
   combatEvents: [],
   lootEvents: [],
   inventory: [],
-  equipment: { weapon: null, armor: null, trinket: null },
+  equipment: {
+    weapon: null,
+    armor: null,
+    helmet: null,
+    gloves: null,
+    legs: null,
+    feet: null,
+    offhand: null,
+    ring1: null,
+    ring2: null,
+    earring1: null,
+    earring2: null,
+    belt: null,
+    cloak: null,
+    amulet: null,
+  },
   ...extra,
 });
 
@@ -177,7 +192,7 @@ describe('battle presentation timeline', () => {
       snapshot({
         lootEvents: [drop(1), drop(2), drop(3), drop(4), drop(5, { salvaged: true })],
         inventory: [1, 2, 4, 5].map((id) => ({ instanceId: `loot-${id}`, itemId: 'wolf-fang' })),
-        equipment: { weapon: null, armor: null, trinket: 'loot-4' },
+        equipment: { ...snapshot().equipment, offhand: 'loot-4' },
       }),
     );
     expect(shownLoot).toEqual([1]);

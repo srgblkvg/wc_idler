@@ -437,9 +437,6 @@ button svg {
   right: 6%;
   z-index: 1;
 }
-.region-wolf .foe-fighter .enemy-sprite {
-  transform: scaleX(-1);
-}
 .fighter-name {
   position: absolute;
   bottom: -18px;
@@ -3188,20 +3185,20 @@ button svg {
 }
 .compact-equipment-slots {
   flex-shrink: 0;
-  padding: 13px 12px 16px;
+  padding: 9px 12px 11px;
   border-top: 1px solid #3a4932;
   background: #202c20;
 }
 .compact-equipment-slots .inventory-equipped {
   flex-shrink: 0;
-  gap: 25px;
+  gap: 8px 12px;
 }
 .compact-equipment-slots .inventory-equipped-cell {
   flex-basis: 62px;
 }
 .compact-equipment-slots .inventory-slot.equipped-slot {
-  width: 58px;
-  height: 58px;
+  width: 48px;
+  height: 48px;
 }
 .compact-equipment-slots + .compact-footer {
   border-top: 0;
@@ -3213,8 +3210,8 @@ button svg {
     padding-bottom: 11px;
   }
   .compact-equipment-slots .inventory-slot.equipped-slot {
-    width: 49px;
-    height: 49px;
+    width: 42px;
+    height: 42px;
   }
 }
 
@@ -3232,5 +3229,5 @@ button svg {
 }
 .hero-equipment-slots .inventory-equipped {
   justify-content: center;
-  gap: 36px;
+  gap: 10px;
 }

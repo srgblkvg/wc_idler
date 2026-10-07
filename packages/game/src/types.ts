@@ -1,6 +1,20 @@
 export type MobId = 'wolf' | 'kobold' | 'defias';
 export type QuestId = 'wolves-at-the-gate' | 'kobold-cleanup' | 'defias-brotherhood';
-export type EquipmentSlot = 'weapon' | 'armor' | 'trinket';
+export type EquipmentSlot =
+  | 'weapon'
+  | 'armor'
+  | 'helmet'
+  | 'gloves'
+  | 'legs'
+  | 'feet'
+  | 'offhand'
+  | 'ring1'
+  | 'ring2'
+  | 'earring1'
+  | 'earring2'
+  | 'belt'
+  | 'cloak'
+  | 'amulet';
 export type ItemId =
   | 'training-hammer'
   | 'recruit-vest'
@@ -10,8 +24,35 @@ export type ItemId =
   | 'abbey-tabard'
   | 'defias-blade'
   | 'northshire-signet'
-  | 'thunder-axe';
-export type SkillId = 'heavyStrike' | 'ward' | 'mend';
+  | 'thunder-axe'
+  | 'hunting-coat'
+  | 'watch-mail'
+  | 'oath-lamellar'
+  | 'linen-hood'
+  | 'watch-helmet'
+  | 'linen-wraps'
+  | 'watch-gauntlets'
+  | 'linen-trousers'
+  | 'watch-greaves'
+  | 'birch-shield'
+  | 'ford-shield'
+  | 'reed-dagger'
+  | 'reed-parrying-dagger'
+  | 'sun-watch-armor'
+  | 'sun-watch-helmet'
+  | 'sun-watch-gloves'
+  | 'sun-watch-legs'
+  | 'linen-shoes'
+  | 'watch-boots'
+  | 'sun-watch-boots'
+  | 'copper-ring'
+  | 'river-ring'
+  | 'copper-earring'
+  | 'river-earring'
+  | 'woven-belt'
+  | 'traveller-cloak'
+  | 'birch-amulet';
+export type SkillId = 'heavyStrike' | 'ward' | 'mend' | 'flurry' | 'secondWind';
 export interface Appearance {
   gender: 'male' | 'female';
   hair: 'dark' | 'fair' | 'red';
@@ -23,7 +64,6 @@ export interface SkillDefinition {
   id: SkillId;
   name: string;
   description: string;
-  requiredLevel: number;
   manaCost: number;
   cooldownTurns: number;
   policy: 'healthBelow' | 'onCooldown';
@@ -58,13 +98,19 @@ export interface ItemDefinition {
   id: ItemId;
   name: string;
   slot: EquipmentSlot;
-  rarity: 'common' | 'uncommon' | 'rare' | 'epic';
+  equipSlots?: EquipmentSlot[];
+  rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+  handType?: 'oneHand' | 'twoHand';
+  offhandType?: 'shield' | 'talisman' | 'dagger';
+  grantedSkills: SkillId[];
   requiredLevel: number;
   stats: Partial<Stats>;
   description: string;
   visual: {
-    weaponStyle?: 'axe' | 'sword' | 'mace';
+    weaponStyle?: 'axe' | 'sword' | 'mace' | 'dagger';
     armorStyle?: 'cloth' | 'leather' | 'chain';
+    armorVariant?: 'hunter' | 'watch' | 'oath' | 'sun';
+    accessoryStyle?: 'cloth' | 'iron' | 'sun' | 'shield' | 'talisman' | 'dagger';
     accentColor: string;
   };
 }
@@ -132,7 +178,7 @@ export interface OfflineReport {
   deaths: number;
 }
 export interface PlayerState {
-  schemaVersion: 2;
+  schemaVersion: 3;
   id: string;
   name: string;
   race: 'Человек';
@@ -171,7 +217,7 @@ export type GameAction =
   | { type: 'stopHunt' }
   | { type: 'rest' }
   | { type: 'acceptQuest' | 'turnInQuest'; questId: QuestId }
-  | { type: 'equip'; itemInstanceId: string }
+  | { type: 'equip'; itemInstanceId: string; slot?: EquipmentSlot }
   | { type: 'unequip'; slot: EquipmentSlot }
   | { type: 'setSkills'; skills: SkillId[] };
 export type RandomSource = () => number;

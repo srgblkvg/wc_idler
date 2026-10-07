@@ -3,6 +3,7 @@ import { CirclePause, Flame, MapPin, Sword, X } from 'lucide-react';
 import {
   ITEM_BY_ID,
   MOB_BY_ID,
+  getEquipConflict,
   getDerivedStats,
   type CombatEvent,
   type LootEvent,
@@ -44,6 +45,7 @@ export function BattlePanel({
     (player.mode === 'hunting' ? player.targetMobId : null);
   const mob = mobId ? MOB_BY_ID[mobId] : null;
   const drop = loot ? ITEM_BY_ID[loot.itemId] : null;
+  const dropConflict = drop ? getEquipConflict(player, drop) : null;
   const ward =
     !!combat &&
     player.combatEvents.some(
@@ -112,9 +114,10 @@ export function BattlePanel({
                   <button
                     disabled={
                       pending ||
-                      drop.requiredLevel > player.level ||
-                      player.equipment[drop.slot] === loot.instanceId
+                      !!dropConflict ||
+                      Object.values(player.equipment).includes(loot.instanceId)
                     }
+                    title={dropConflict || undefined}
                     onClick={async () => {
                       if (await act({ type: 'equip', itemInstanceId: loot.instanceId! }))
                         dismissLoot();

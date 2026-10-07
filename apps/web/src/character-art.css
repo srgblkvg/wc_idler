@@ -21,8 +21,15 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  transform-origin: 54% 20%;
+  transform-origin: 50% 0%;
   overflow: visible;
+}
+.character-art {
+  /* Reflect the registered doll together: face, grip and equipment stay aligned. */
+  transform: translate(-50%, -50%) scaleX(-1);
+}
+.enemy-sprite[data-mob='wolf'] .enemy-art {
+  transform: translate(-50%, -50%) scaleX(-1);
 }
 .painted-part {
   position: absolute;
@@ -35,19 +42,37 @@
   z-index: 1;
 }
 .character-head {
-  z-index: 4;
-  /* Atlas braid tips overlap the next row only in its empty top-right corner. */
-  clip-path: polygon(0 0, 82% 0, 100% 17%, 100% 100%, 0 100%);
-}
-.character-body {
   z-index: 3;
 }
-.character-trinket {
+.character-neck {
+  z-index: 3;
+}
+.character-sprite[data-hairstyle='braid'] .character-head {
+  /* Exclude the previous row's braid tip without clipping this row's crown. */
+  clip-path: polygon(0 0, 72% 0, 100% 28%, 100% 100%, 0 100%);
+}
+.character-body {
+  /* The collar sits in front of the neck, including in close-up portraits. */
+  z-index: 4;
+}
+.character-legs {
+  z-index: 2;
+}
+.character-feet {
+  z-index: 1;
+}
+.character-gloves {
   z-index: 5;
 }
+.character-helmet {
+  z-index: 6;
+}
+.character-offhand {
+  z-index: 7;
+}
 .character-sprite.is-portrait .character-art {
-  transform: translate(-50%, -50%) scale(2.65);
-  transform-origin: 54% 0%;
+  transform: translate(-50%, -50%) scale(-2.15, 2.15);
+  transform-origin: 48% 3%;
 }
 .character-sprite.is-portrait {
   overflow: hidden;
@@ -60,10 +85,31 @@
   }
 }
 
-/* Combat cards show the face, shoulders and held weapon together. */
+/* Full figures keep every visible equipment slot inside the combat card. */
+.fighter-portrait .character-art,
+.fighter-portrait .enemy-art {
+  width: min(132cqw, 78.57143cqh);
+  height: min(168cqw, 100cqh);
+  top: auto;
+  bottom: 0;
+}
 .fighter-portrait .character-sprite.is-portrait .character-art {
-  transform: translate(-50%, -50%) scale(1.45);
-  transform-origin: 44% 1%;
+  transform: translateX(-50%) scaleX(-1);
+  transform-origin: 50% 50%;
+}
+.fighter-portrait .enemy-art {
+  bottom: 3.4cqh;
+  transform: translateX(-50%);
+  transform-origin: 50% 50%;
+}
+.fighter-portrait .enemy-sprite[data-mob='wolf'] .enemy-art {
+  width: min(108cqw, 78.57143cqh);
+  height: min(137.45455cqw, 100cqh);
+  transform: translateX(-50%) scaleX(-1);
+}
+.character-sprite.is-avatar .character-art {
+  transform: translate(-50%, -50%) scale(-3.05, 3.05);
+  transform-origin: 47% 5%;
 }
 
 /* Exclude the previous atlas row's mace tip from the thunder axe crop. */
@@ -73,5 +119,8 @@
 
 /* The forest spirit's antlers are wider than its trunk. Exclude the adjacent wolf. */
 .enemy-sprite[data-mob='kobold'] .painted-part {
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 12% 100%, 18% 25%, 0 25%);
+  clip-path: polygon(0 0, 89% 0, 89% 83%, 100% 95%, 100% 100%, 15% 100%, 20% 60%, 20% 32%, 0 25%);
+}
+.enemy-sprite[data-mob='defias'] .painted-part {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 14% 100%, 14% 86%, 0 86%);
 }

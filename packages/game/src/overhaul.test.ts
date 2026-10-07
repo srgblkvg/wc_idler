@@ -16,12 +16,12 @@ import {
   STATE_SCHEMA_VERSION,
   TICK_MS,
 } from './content.js';
-import { migratePlayerState } from './migration.js';
+import { createDefaultSkills, migratePlayerState } from './migration.js';
 import { GameError, parseAction, parseAppearance } from './validation.js';
 import type { Appearance, Encounter, SkillState } from './types.js';
 
 const player = () => createPlayer({ id: 'slavic-ratnik', name: 'Велимир', now: 0, rngSeed: 42 });
-const noSkills: SkillState = { loadout: [], cooldowns: { heavyStrike: 0, ward: 0, mend: 0 } };
+const noSkills: SkillState = createDefaultSkills();
 const encounter: Encounter = { mobId: 'wolf', hp: 1000, maxHp: 1000, round: 0 };
 
 describe('appearance and versioned persistence', () => {
@@ -82,7 +82,7 @@ describe('appearance and versioned persistence', () => {
       mana: 13,
       totalKills: 52,
       inventory: [...base.inventory, { instanceId: 'reward:3', itemId: 'militia-hammer' }],
-      equipment: { ...base.equipment, weapon: 'reward:3' },
+      equipment: { weapon: 'reward:3', armor: base.equipment.armor, trinket: null },
       quests: [{ questId: 'wolves-at-the-gate', kills: 8, status: 'completed' }],
       nextItemId: 4,
       nextLogId: 19,
@@ -99,7 +99,6 @@ describe('appearance and versioned persistence', () => {
       'mana',
       'totalKills',
       'inventory',
-      'equipment',
       'quests',
       'rngState',
       'nextItemId',
@@ -107,7 +106,8 @@ describe('appearance and versioned persistence', () => {
       'nextTickAt',
     ] as const)
       expect(migrated[key]).toEqual(legacy[key]);
-    expect(migrated.schemaVersion).toBe(2);
+    expect(migrated.schemaVersion).toBe(STATE_SCHEMA_VERSION);
+    expect(migrated.equipment).toEqual({ ...base.equipment, weapon: 'reward:3' });
     expect(migrated.appearance).toEqual(DEFAULT_APPEARANCE);
     expect(migrated.log.map((entry) => entry.message).join(' ')).not.toMatch(
       /Northshire|Северозем|аббатств/,
@@ -127,7 +127,7 @@ describe('automatic skills', () => {
   ])('rejects illegal loadouts and client-authored policies %j', (value) =>
     expect(() => parseAction(value)).toThrow(GameError),
   );
-  it('enforces unlock levels and does not reset cooldowns by swapping a loadout', () => {
+  it('enforces equipment grants and does not reset cooldowns by swapping a loadout', () => {
     let state = player();
     expect(() => applyAction(state, { type: 'setSkills', skills: ['ward'] }, 0)).toThrow();
     state.skills.cooldowns.heavyStrike = 3;
@@ -168,8 +168,12 @@ describe('automatic skills', () => {
       'basicAttack',
     );
     const wounded = resolveBattleTurn({ ...state, hp: 5, stats }, encounter, () => 0.5);
-    expect(wounded.combatEvents[0]).toMatchObject({ ability: 'mend', kind: 'heal', healing: 15 });
-    expect(wounded.skills.cooldowns.mend).toBe(4);
+    expect(wounded.combatEvents[0]).toMatchObject({
+      ability: 'secondWind',
+      kind: 'heal',
+      healing: 9,
+    });
+    expect(wounded.skills.cooldowns.secondWind).toBe(5);
   });
   it('reduces retaliation with ward while still attacking', () => {
     const state = { ...player(), level: 2 },

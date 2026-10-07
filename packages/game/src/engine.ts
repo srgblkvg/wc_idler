@@ -10,6 +10,8 @@ import {
   COMBAT_RULES,
   MAX_RECENT_EVENTS,
   SKILL_BY_ID,
+  SKILLS,
+  EQUIPMENT_SLOTS,
   STATE_SCHEMA_VERSION,
   WORLD,
 } from './content.js';
@@ -26,7 +28,16 @@ import type {
   SkillState,
 } from './types.js';
 import { GameError, parseAction, parseAppearance } from './validation.js';
-import { createDefaultSkills, migratePlayerState } from './migration.js';
+import { migratePlayerState } from './migration.js';
+import {
+  createDefaultSkills,
+  getAvailableSkills,
+  getEquipConflict,
+  getEquippedItem,
+  getEquipSlot,
+  getItemSlots,
+  reconcileEquipmentSkills,
+} from './equipment.js';
 
 export function xpForNextLevel(level: number): number {
   return level >= MAX_LEVEL ? 0 : 60 + (level - 1) * 40;
@@ -51,7 +62,7 @@ export function getDerivedStats(
     critChance: COMBAT_RULES.baseCritChance,
     hitChance: COMBAT_RULES.baseHitChance,
   };
-  for (const instanceId of Object.values(player.equipment)) {
+  for (const instanceId of new Set(Object.values(player.equipment))) {
     const instance = player.inventory.find((item) => item.instanceId === instanceId);
     if (instance)
       for (const [key, value] of Object.entries(ITEM_BY_ID[instance.itemId].stats))
@@ -120,7 +131,13 @@ export function createPlayer({
       { instanceId: `${id}:1`, itemId: 'training-hammer' },
       { instanceId: `${id}:2`, itemId: 'recruit-vest' },
     ],
-    equipment: { weapon: `${id}:1`, armor: `${id}:2`, trinket: null },
+    equipment: {
+      ...(Object.fromEntries(
+        EQUIPMENT_SLOTS.map((slot) => [slot, null]),
+      ) as PlayerState['equipment']),
+      weapon: `${id}:1`,
+      armor: `${id}:2`,
+    },
     quests: [],
     totalKills: 0,
     totalDeaths: 0,
@@ -133,6 +150,7 @@ export function createPlayer({
     log: [],
     offlineReport: null,
   };
+  player.skills = reconcileEquipmentSkills(player, true);
   addLog(
     player,
     now,
@@ -202,11 +220,9 @@ function physicalHit(
 export function advanceSkillCooldowns(skills: SkillState, turns = 1): SkillState {
   return {
     loadout: [...skills.loadout],
-    cooldowns: {
-      heavyStrike: Math.max(0, skills.cooldowns.heavyStrike - turns),
-      ward: Math.max(0, skills.cooldowns.ward - turns),
-      mend: Math.max(0, skills.cooldowns.mend - turns),
-    },
+    cooldowns: Object.fromEntries(
+      SKILLS.map((skill) => [skill.id, Math.max(0, skills.cooldowns[skill.id] - turns)]),
+    ) as SkillState['cooldowns'],
   };
 }
 export interface BattleTurnResult {
@@ -255,46 +271,59 @@ export function resolveBattleTurn(
   };
   const ready = skills.loadout.filter((id) => {
     const skill = SKILL_BY_ID[id];
-    return (
-      skill.requiredLevel <= character.level && skills.cooldowns[id] === 0 && mana >= skill.manaCost
-    );
+    return skills.cooldowns[id] === 0 && mana >= skill.manaCost;
   });
   // A configured survival skill takes priority over attacks at its health threshold.
-  const mend =
-    ready.includes('mend') && hp <= character.stats.maxHp * SKILL_BY_ID.mend.healthBelow!;
-  const selected = mend ? 'mend' : ready.find((id) => SKILL_BY_ID[id].policy === 'onCooldown');
+  const survival = ready.find(
+    (id) =>
+      SKILL_BY_ID[id].policy === 'healthBelow' &&
+      hp <= character.stats.maxHp * SKILL_BY_ID[id].healthBelow!,
+  );
+  const selected = survival ?? ready.find((id) => SKILL_BY_ID[id].policy === 'onCooldown');
   if (selected) {
     mana -= SKILL_BY_ID[selected].manaCost;
     skills.cooldowns[selected] = SKILL_BY_ID[selected].cooldownTurns;
   }
-  if (selected === 'mend') {
-    const healed = Math.min(character.stats.maxHp - hp, 12 + character.level * 3);
+  if (selected === 'mend' || selected === 'secondWind') {
+    const amount =
+      selected === 'mend'
+        ? 12 + character.level * 3
+        : Math.max(1, Math.round(character.stats.maxHp * COMBAT_RULES.secondWindFraction));
+    const healed = Math.min(character.stats.maxHp - hp, amount);
     hp += healed;
-    events.push(`Живая вода восстанавливает ${healed} здоровья.`);
-    event('heal', 'player', 'player', { healing: healed, ability: 'mend' });
+    events.push(`${SKILL_BY_ID[selected].name}: восстановлено ${healed} здоровья.`);
+    event('heal', 'player', 'player', { healing: healed, ability: selected });
   } else {
     if (selected === 'ward') {
-      events.push('Оберег ослабляет следующую вражескую атаку.');
+      events.push('Заслон ослабляет следующую вражескую атаку.');
       event('ward', 'player', 'player', { ability: 'ward' });
     }
-    const hit = physicalHit(
-      character.stats.attack,
-      mob.armor,
-      character.level,
-      mob.level,
-      character.stats.critChance,
-      character.stats.hitChance,
-      random,
-      selected === 'heavyStrike' ? COMBAT_RULES.heavyStrikeMultiplier : 1,
-    );
-    next.hp = Math.max(0, next.hp - hit.damage);
-    const ability = selected === 'heavyStrike' ? 'heavyStrike' : 'basicAttack';
-    events.push(
-      hit.missed
-        ? `Ваш удар по противнику «${mob.name}» не достиг цели.`
-        : `${selected === 'heavyStrike' ? 'Тяжёлый удар' : 'Вы'}: ${hit.damage} урона противнику «${mob.name}»${hit.critical ? ' — критический удар' : ''}.`,
-    );
-    event('attack', 'player', 'enemy', { ...hit, ability });
+    const hits = selected === 'flurry' ? 2 : 1;
+    for (let strike = 0; strike < hits && next.hp > 0; strike++) {
+      const hit = physicalHit(
+        character.stats.attack,
+        mob.armor,
+        character.level,
+        mob.level,
+        character.stats.critChance,
+        character.stats.hitChance,
+        random,
+        selected === 'heavyStrike'
+          ? COMBAT_RULES.heavyStrikeMultiplier
+          : selected === 'flurry'
+            ? COMBAT_RULES.flurryHitMultiplier
+            : 1,
+      );
+      next.hp = Math.max(0, next.hp - hit.damage);
+      const ability =
+        selected === 'heavyStrike' || selected === 'flurry' ? selected : 'basicAttack';
+      events.push(
+        hit.missed
+          ? `Ваш удар по противнику «${mob.name}» не достиг цели.`
+          : `${ability === 'basicAttack' ? 'Вы' : SKILL_BY_ID[ability].name}: ${hit.damage} урона противнику «${mob.name}»${hit.critical ? ' — критический удар' : ''}.`,
+      );
+      event('attack', 'player', 'enemy', { ...hit, ability });
+    }
   }
   const won = next.hp === 0;
   if (!won) {
@@ -578,23 +607,51 @@ export function applyAction(
       const instance = player.inventory.find((item) => item.instanceId === action.itemInstanceId);
       if (!instance) throw new GameError('ITEM_NOT_OWNED', 'Этого предмета нет в вашей сумке.');
       const item = ITEM_BY_ID[instance.itemId];
+      if (action.slot && !getItemSlots(item).includes(action.slot))
+        throw new GameError(
+          'INVALID_EQUIPMENT_SLOT',
+          'Этот предмет нельзя надеть в выбранную ячейку.',
+        );
       if (player.level < item.requiredLevel)
         throw new GameError(
           'LEVEL_REQUIRED',
           `Для предмета «${item.name}» нужен уровень ${item.requiredLevel}.`,
         );
-      player.equipment[item.slot] = instance.instanceId;
+      const conflict = getEquipConflict(player, item, action.slot);
+      if (conflict) throw new GameError('EQUIPMENT_CONFLICT', conflict);
+      const wornSlot = EQUIPMENT_SLOTS.find(
+        (slot) => player.equipment[slot] === instance.instanceId,
+      );
+      const slot = action.slot ?? wornSlot ?? getEquipSlot(player, item);
+      if (slot === 'weapon') {
+        const offhand = getEquippedItem(player, 'offhand');
+        if (
+          item.handType === 'twoHand' ||
+          (offhand?.offhandType === 'dagger' && item.visual.weaponStyle !== 'dagger')
+        )
+          player.equipment.offhand = null;
+      }
+      // An owned instance may move between compatible jewellery slots, but never occupy both.
+      for (const occupied of EQUIPMENT_SLOTS) {
+        if (player.equipment[occupied] === instance.instanceId) player.equipment[occupied] = null;
+      }
+      player.equipment[slot] = instance.instanceId;
+      player.skills = reconcileEquipmentSkills(player, true);
       addLog(player, now, 'system', `Экипирован предмет «${item.name}».`);
       break;
     }
     case 'unequip':
       player.equipment[action.slot] = null;
+      if (action.slot === 'weapon' && getEquippedItem(player, 'offhand')?.offhandType === 'dagger')
+        player.equipment.offhand = null;
+      player.skills = reconcileEquipmentSkills(player, true);
       break;
     case 'setSkills': {
-      if (action.skills.some((id) => player.level < SKILL_BY_ID[id].requiredLevel))
+      const available = getAvailableSkills(player);
+      if (action.skills.some((id) => !available.includes(id)))
         throw new GameError(
-          'LEVEL_REQUIRED',
-          'Одно из выбранных умений пока недоступно по уровню.',
+          'SKILL_NOT_GRANTED',
+          'Для выбранного умения нужно надеть соответствующее снаряжение.',
         );
       player.skills.loadout = [...action.skills];
       addLog(

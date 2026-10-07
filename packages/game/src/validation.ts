@@ -1,5 +1,11 @@
-import { DEFAULT_APPEARANCE, MOB_BY_ID, QUEST_BY_ID, SKILL_BY_ID } from './content.js';
-import type { Appearance, GameAction } from './types.js';
+import {
+  DEFAULT_APPEARANCE,
+  EQUIPMENT_SLOTS,
+  MOB_BY_ID,
+  QUEST_BY_ID,
+  SKILL_BY_ID,
+} from './content.js';
+import type { Appearance, EquipmentSlot, GameAction } from './types.js';
 
 export class GameError extends Error {
   constructor(
@@ -53,17 +59,19 @@ export function parseAction(input: unknown): GameAction {
         throw new GameError('INVALID_ACTION', 'Выберите существующее задание.');
       break;
     case 'equip':
-      keys = ['type', 'itemInstanceId'];
+      keys = ['type', 'itemInstanceId', 'slot'];
       if (
         typeof value.itemInstanceId !== 'string' ||
         value.itemInstanceId.length < 1 ||
         value.itemInstanceId.length > 128
       )
         throw new GameError('INVALID_ACTION', 'Выберите предмет из сумки.');
+      if (value.slot !== undefined && !EQUIPMENT_SLOTS.includes(value.slot as EquipmentSlot))
+        throw new GameError('INVALID_ACTION', 'Выберите доступную ячейку экипировки.');
       break;
     case 'unequip':
       keys = ['type', 'slot'];
-      if (!['weapon', 'armor', 'trinket'].includes(value.slot as string))
+      if (!EQUIPMENT_SLOTS.includes(value.slot as EquipmentSlot))
         throw new GameError('INVALID_ACTION', 'Выберите доступную ячейку экипировки.');
       break;
     case 'setSkills':

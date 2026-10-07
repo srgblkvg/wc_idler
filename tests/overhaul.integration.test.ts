@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { STATE_SCHEMA_VERSION } from '../packages/game/src/content.js';
 import { buildApp } from '../apps/server/src/app.js';
 import { migrate } from '../apps/server/src/migrate.js';
 
@@ -9,7 +10,7 @@ const integration = process.env.TEST_DATABASE_URL ? describe : describe.skip;
 const appearance = { gender: 'female', hair: 'red', hairStyle: 'braid', skin: 'tan', mark: 'scar' };
 const v2Fields = ['appearance', 'skills', 'combatEvents', 'lootEvents', 'nextEventId'];
 
-integration('schema 2 appearance, skills, and legacy persistence', () => {
+integration('appearance, equipment skills, and legacy persistence', () => {
   const schema = `overhaul_${randomUUID().replaceAll('-', '')}`;
   const now = Date.now();
   let admin: pg.Pool;
@@ -85,6 +86,8 @@ integration('schema 2 appearance, skills, and legacy persistence', () => {
       class: 'Paladin',
       zone: 'Northshire Abbey',
     });
+    const current = saved.equipment as Record<string, unknown>;
+    saved.equipment = { weapon: current.weapon, armor: current.armor, trinket: current.offhand };
     return saved;
   }
 
@@ -166,13 +169,12 @@ integration('schema 2 appearance, skills, and legacy persistence', () => {
     });
     expect(response.statusCode).toBe(200);
     const upgraded = response.json().player;
-    expect(upgraded.schemaVersion).toBe(2);
+    expect(upgraded.schemaVersion).toBe(STATE_SCHEMA_VERSION);
     for (const field of [
       'id',
       'name',
       'createdAt',
       'inventory',
-      'equipment',
       'quests',
       'copper',
       'xp',
@@ -181,11 +183,20 @@ integration('schema 2 appearance, skills, and legacy persistence', () => {
     ]) {
       expect(upgraded[field]).toEqual(old[field]);
     }
+    expect(upgraded.equipment).toMatchObject({
+      weapon: (old.equipment as Record<string, unknown>).weapon,
+      armor: (old.equipment as Record<string, unknown>).armor,
+      offhand: null,
+      feet: null,
+      ring1: null,
+      ring2: null,
+    });
+    expect(upgraded.equipment).not.toHaveProperty('trinket');
     expect(upgraded.appearance.gender).toMatch(/^(male|female)$/);
     expect(new Set(upgraded.skills.loadout).size).toBe(upgraded.skills.loadout.length);
     expect(upgraded).not.toHaveProperty('rngState');
     const persisted = await readState(user.player.id);
-    expect(persisted.schemaVersion).toBe(2);
+    expect(persisted.schemaVersion).toBe(STATE_SCHEMA_VERSION);
     expect(persisted.rngState).toBe(old.rngState);
     expect(persisted.nextItemId).toBe(4);
     expect(
@@ -218,20 +229,20 @@ integration('schema 2 appearance, skills, and legacy persistence', () => {
       headers: { cookie: user.cookie },
     });
     expect(reconnect.statusCode).toBe(200);
-    expect(reconnect.json().player.schemaVersion).toBe(2);
+    expect(reconnect.json().player.schemaVersion).toBe(STATE_SCHEMA_VERSION);
     const responses = await Promise.all(
       Array.from({ length: 4 }, () => action(user.cookie, intent, key)),
     );
     for (const response of responses) {
       expect(response.statusCode).toBe(200);
-      expect(response.json().player.schemaVersion).toBe(2);
+      expect(response.json().player.schemaVersion).toBe(STATE_SCHEMA_VERSION);
       expect(response.json().player.copper).toBe(170);
       expect(response.json().player).not.toHaveProperty('rngState');
     }
     const stored = await readState(user.player.id);
     expect(stored.copper).toBe(170);
     expect(stored.quests[0].status).toBe('completed');
-    expect(stored.schemaVersion).toBe(2);
+    expect(stored.schemaVersion).toBe(STATE_SCHEMA_VERSION);
     expect((await action(user.cookie, intent)).statusCode).toBe(400);
     expect((await action(user.cookie, { type: 'rest' }, key)).statusCode).toBe(409);
   });
@@ -256,7 +267,7 @@ integration('schema 2 appearance, skills, and legacy persistence', () => {
     expect(after.hp).toBe(initial.hp);
     expect(after.mana).toBe(initial.mana);
     expect(after.copper).toBe(initial.copper);
-    for (const loadout of [[], ['heavyStrike'], ['mend', 'heavyStrike']]) {
+    for (const loadout of [[], ['heavyStrike'], ['secondWind', 'heavyStrike']]) {
       const response = await action(user.cookie, { type: 'setSkills', skills: loadout });
       expect(response.statusCode).toBe(200);
       expect(response.json().player.skills.loadout).toEqual(loadout);
@@ -272,7 +283,7 @@ integration('schema 2 appearance, skills, and legacy persistence', () => {
     expect((await action(user.cookie, { type: 'setSkills', skills: [] })).statusCode).toBe(200);
     const response = await action(user.cookie, {
       type: 'setSkills',
-      skills: ['heavyStrike', 'mend'],
+      skills: ['heavyStrike', 'secondWind'],
     });
     expect(response.statusCode).toBe(200);
     expect(response.json().player.skills.cooldowns).toEqual(state.skills.cooldowns);
