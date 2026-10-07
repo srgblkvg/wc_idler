@@ -389,7 +389,7 @@ button svg {
   content: '';
   position: absolute;
   inset: 0;
-  background: url('/art/slavic-forest.png') center 60% / cover;
+  background: url('/art/slavic-forest.webp') center 60% / cover;
   z-index: -2;
 }
 .battle-arena.region-kobold:before {
@@ -1422,7 +1422,7 @@ button svg {
   inset: 0;
   background:
     linear-gradient(90deg, #0e1d1599, #111c15d9 45%, #0e1d15dd),
-    url('/art/slavic-forest.png') center / cover;
+    url('/art/slavic-forest.webp') center / cover;
   z-index: 0;
 }
 .character-creation form {
@@ -1784,132 +1784,827 @@ button svg {
     right: 4%;
   }
 }
+
+/* Fixed application shell: the page never becomes a vertical document. */
+.app-shell {
+  grid-template-rows: 72px minmax(0, 1fr);
+  grid-template-areas: 'header header' 'nav main';
+}
+.location-bar,
+.save-state,
+.battle-note,
+.panel-heading > span,
+.rarity-legend {
+  display: none;
+}
+.panel-heading {
+  padding: 18px 22px;
+}
+.panel-heading h2 {
+  margin: 0;
+  font-size: 25px;
+}
+.panel-heading > p {
+  margin: 8px 0 0;
+}
+.mobile-xp,
+.section-back {
+  display: none;
+}
+.brand > span {
+  font-family: 'Ruslan Display', 'Podkova', serif;
+  font-size: 31px;
+  letter-spacing: 4px;
+}
+.brand small {
+  font-family: 'Golos Text', sans-serif;
+}
+.header-portrait,
+.header-money {
+  flex-shrink: 0;
+}
+.header-identity {
+  min-width: 0;
+}
+.header-identity strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Creation has one short set of choices per step, beside a large live preview. */
+.creation-mode {
+  grid-template-columns: 1fr;
+  grid-template-rows: 72px minmax(0, 1fr);
+  grid-template-areas: 'header' 'main';
+}
+.creation-mode .game-main {
+  padding: 22px;
+}
+.character-creation {
+  border-color: #3e493d;
+}
+.character-creation form {
+  width: min(920px, 100%);
+  height: min(640px, 100%);
+  max-height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 350px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: 'title title' 'avatar steps' 'avatar choices' 'avatar actions';
+  gap: 24px 30px;
+  padding: 28px;
+  overflow: hidden;
+  background: #1c261fee;
+  border-color: #536047;
+}
+.character-creation form > header {
+  grid-area: title;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+}
+.character-creation header > div > span {
+  display: none;
+}
+.character-creation h1 {
+  margin: 0;
+  font-size: 27px;
+  color: #e0decc;
+}
+.creation-step-count {
+  color: #cfb783;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.creation-step-count small {
+  font-size: 13px;
+  color: #84927c;
+}
+.creation-steps {
+  grid-area: steps;
+  display: flex;
+  gap: 4px;
+}
+.creation-steps button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  flex: 1;
+  padding: 10px 4px;
+  border: 0;
+  border-bottom: 2px solid #44533c;
+  background: transparent;
+  color: #89987e;
+  font-size: 12px;
+}
+.creation-steps button > span {
+  display: none;
+}
+.creation-steps button[aria-current='step'] {
+  border-color: #c5a96e;
+  color: #eee4c8;
+}
+.creation-avatar {
+  grid-area: avatar;
+  position: relative;
+  height: auto;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 50% 55%, #69745140, transparent 68%);
+}
+.creation-avatar .character-sprite {
+  width: 100%;
+  height: 100%;
+  max-height: 500px;
+  object-fit: contain;
+}
+.creation-avatar-name {
+  position: absolute;
+  bottom: 7px;
+  left: 10px;
+  right: 10px;
+  text-align: center;
+  font-family: var(--display);
+  color: #dacfab;
+  font-size: 24px;
+  text-shadow: 0 2px 8px #10200f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.appearance-settings {
+  grid-area: choices;
+  align-self: center;
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+.appearance-settings fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.appearance-settings legend,
+.name-field {
+  color: #a4b095;
+  font-size: 12px;
+}
+.appearance-settings legend {
+  margin-bottom: 9px;
+}
+.appearance-settings fieldset > div {
+  display: flex;
+  gap: 7px;
+}
+.appearance-settings button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 8px 10px;
+  font-size: 12px;
+  border-color: #53634a;
+  color: #c5cdb9;
+  background: #253325;
+}
+.appearance-settings button.selected {
+  background: #4d6240;
+  border-color: #a3b17b;
+  color: #faf1d7;
+  box-shadow: inset 0 0 0 1px #9da67450;
+}
+.hair-option i {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid #a3a18377;
+  background: #2d231d;
+  flex-shrink: 0;
+}
+.hair-option.hair-fair i {
+  background: #c4ad70;
+}
+.hair-option.hair-red i {
+  background: #a15d3b;
+}
+.name-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 9px;
+  margin: 0;
+}
+.name-field input {
+  width: 100%;
+  min-height: 46px;
+  font-size: 15px;
+  padding: 10px 12px;
+  background: #172219;
+  border-color: #596b49;
+}
+.name-field input::placeholder {
+  color: #78896e;
+}
+.creation-actions {
+  grid-area: actions;
+  display: flex;
+  gap: 10px;
+  align-self: end;
+}
+.create-button {
+  margin: 0;
+  min-height: 46px;
+  font-size: 13px;
+  flex: 1;
+}
+.creation-back {
+  min-width: 46px;
+  padding: 10px;
+}
+.creation-name-hint {
+  grid-column: 2;
+  color: #dbc184;
+  border: 0;
+  background: none;
+  font-size: 11px;
+  text-decoration: underline;
+  padding: 0;
+}
+
+/* Mobile screens use a single body and a fixed action row. */
+.compact-panel,
+.more-panel {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #1a251e;
+  border: 1px solid #3d4b37;
+  border-radius: 5px;
+}
+.compact-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  gap: 10px;
+  padding: 16px;
+  border-bottom: 1px solid #3a4833;
+}
+.compact-heading h2 {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 24px;
+  color: #e2dcc3;
+  margin: 0;
+  line-height: 1.15;
+}
+.compact-heading small {
+  display: block;
+  color: #8fa080;
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+.compact-count {
+  flex-shrink: 0;
+  color: #b5ba97;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.compact-tabs {
+  display: flex;
+  gap: 5px;
+}
+.compact-tabs button {
+  border: 1px solid transparent;
+  background: none;
+  font-size: 11px;
+  padding: 8px;
+  color: #8b9c7d;
+  min-height: 36px;
+}
+.compact-tabs button[aria-pressed='true'] {
+  border-color: #78805b;
+  color: #dcdabb;
+  background: #35452d;
+}
+.compact-hero .compact-heading {
+  display: block;
+}
+.compact-hero .compact-heading > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.compact-hero .compact-heading h2 {
+  order: -1;
+  max-width: 68%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.compact-hero .compact-heading small {
+  font-size: 10px;
+  white-space: nowrap;
+  margin: 0;
+}
+.compact-hero .compact-tabs {
+  margin-top: 0;
+}
+.compact-hero .compact-tabs button {
+  flex: 1;
+}
+.compact-hero-portrait {
+  flex: 1;
+  min-height: 100px;
+  padding: 5px 30px 0;
+  background: radial-gradient(ellipse at 50% 60%, #5769484d, transparent 65%);
+  overflow: hidden;
+}
+.compact-hero-portrait .character-sprite {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+.compact-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 13px 5px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 15px 12px 18px;
+  border-top: 1px solid #33472c;
+  background: #202d22;
+}
+.compact-stat-grid > div {
+  text-align: center;
+}
+.compact-stat-grid dt {
+  font-size: 10px;
+  color: #99a587;
+}
+.compact-stat-grid dd {
+  font-family: var(--display);
+  color: #d8d7b7;
+  font-size: 23px;
+  line-height: 1.2;
+  margin: 4px 0 0;
+}
+.compact-equipment-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.compact-equipment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 17px 14px;
+  border-bottom: 1px solid #394730;
+}
+.compact-equipment > div {
+  flex: 1;
+  min-width: 0;
+}
+.compact-equipment small {
+  display: block;
+  font-size: 9px;
+  opacity: 0.75;
+  margin-bottom: 5px;
+}
+.compact-equipment strong {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 17px;
+}
+.compact-equipment p {
+  font-size: 10px;
+  color: #a2ad8d;
+  margin: 5px 0 0;
+  line-height: 1.4;
+}
+.compact-footer {
+  flex-shrink: 0;
+  padding: 12px 14px;
+  border-top: 1px solid #3c4b34;
+  background: #202d21;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.compact-footer .button {
+  width: 100%;
+  min-height: 44px;
+  font-size: 12px;
+}
+.compact-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 29px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #c6ccad;
+  font-size: 13px;
+}
+.compact-quest-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.compact-quest-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  text-align: left;
+  padding: 22px 16px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #3e4a34;
+}
+.compact-quest-row > span:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.compact-quest-row strong {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 21px;
+  color: #d9d5b6;
+}
+.compact-quest-row small {
+  color: #aa9a6f;
+  font-size: 11px;
+}
+.compact-quest-row b {
+  color: #9bab81;
+  font-weight: 400;
+  font-size: 10px;
+  margin-top: 3px;
+}
+.compact-quest-row.completed {
+  opacity: 0.6;
+}
+.compact-quest-row > svg {
+  color: #98a97d;
+}
+.quest-number {
+  font-family: var(--display);
+  font-size: 22px;
+  color: #7c9068;
+  min-width: 28px;
+}
+.compact-quest-detail {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  padding: 18px 17px;
+}
+.compact-quest-detail h3,
+.compact-skill-detail h3 {
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: 400;
+  color: #dfd8b9;
+  margin: 8px 0 0;
+}
+.compact-quest-detail > p,
+.compact-skill-detail > p {
+  font-size: 12px;
+  line-height: 1.65;
+  color: #a4af98;
+  margin: 14px 0;
+}
+.compact-objective {
+  border-top: 1px solid #3b4b32;
+  padding-top: 14px;
+  margin-top: 18px;
+}
+.compact-objective > small,
+.compact-reward > small {
+  display: block;
+  font-size: 10px;
+  color: #879c75;
+  margin-bottom: 6px;
+}
+.compact-objective > strong {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  color: #cbd2af;
+  line-height: 1.5;
+}
+.compact-quest-detail .meter {
+  margin-top: 15px;
+}
+.compact-reward {
+  margin-top: 18px;
+}
+.compact-reward > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #c3bc92;
+}
+.compact-reward > strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  margin-top: 8px;
+}
+.compact-completed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: #b4c491;
+}
+.compact-skill-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 15px 14px 0;
+}
+.compact-skill-picker button {
+  position: relative;
+  min-height: 91px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 5px;
+  color: #a2b38b;
+  background: #263827;
+  border: 1px solid #4c5d3e;
+  border-radius: 3px;
+}
+.compact-skill-picker button[aria-pressed='true'] {
+  background: #45583a;
+  border-color: #a8ae7b;
+  color: #e6e1bd;
+}
+.compact-skill-picker button > span {
+  font-size: 10px;
+  line-height: 1.3;
+}
+.compact-skill-picker .skill-chosen {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  color: #c7d297;
+}
+.compact-skill-detail {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 15px 17px 18px;
+}
+.compact-skill-detail h3 {
+  margin: 0;
+  font-size: 24px;
+}
+.skill-cost {
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  color: #a2ad8b;
+  margin-top: 10px;
+}
+.more-links {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.more-links button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 85px;
+  padding: 21px 18px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #3b4a32;
+  text-align: left;
+}
+.more-links button > svg:first-child {
+  color: #b2a476;
+}
+.more-links button > span {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.more-links strong {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 22px;
+  color: #dad5b8;
+}
+.more-links small {
+  display: none;
+}
+.more-links button > svg:last-child {
+  color: #8c9d79;
+}
+.more-status {
+  padding: 18px;
+  color: #829676;
+}
+.more-status > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+}
+.more-status > small {
+  display: none;
+}
+
 @media (max-width: 750px) {
+  :root {
+    font-size: 14px;
+  }
   .app-shell {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 64px 31px minmax(0, 1fr) 62px;
-    grid-template-areas: 'header' 'location' 'main' 'nav';
+    grid-template-rows: 58px minmax(0, 1fr) calc(62px + env(safe-area-inset-bottom));
+    grid-template-areas: 'header' 'main' 'nav';
   }
   .app-header {
     padding: 0 13px;
-    gap: 13px;
+    gap: 14px;
+    background: #18221b;
+  }
+  .app-header:after {
+    display: none;
   }
   .brand {
     min-width: 0;
-    gap: 7px;
+    gap: 0;
+    flex-shrink: 0;
   }
-  .brand .folk-knot {
-    width: 24px;
-    height: 29px;
-  }
-  .brand > span {
-    font-size: 23px;
-    letter-spacing: 2px;
-  }
+  .brand .folk-knot,
   .brand small {
     display: none;
   }
+  .brand > span {
+    font-size: 26px;
+    letter-spacing: 2px;
+  }
   .header-character {
-    margin-left: auto;
+    flex: 1;
     min-width: 0;
-    gap: 7px;
-  }
-  .header-identity {
-    gap: 4px;
-  }
-  .header-identity strong {
-    font-size: 11px;
-    max-width: 104px;
-  }
-  .header-identity small {
-    font-size: 8px;
-  }
-  .header-portrait {
-    width: 28px;
-    height: 36px;
-  }
-  .header-portrait .character-sprite {
-    width: 60px;
-    height: 80px;
-    transform: translate(-15px, -2px);
+    gap: 8px;
+    margin-left: 2px;
+    overflow: hidden;
   }
   .header-character > svg {
     display: none;
   }
+  .header-portrait {
+    width: 29px;
+    height: 37px;
+    border-color: #59684a;
+  }
+  .header-portrait .character-sprite {
+    width: 61px;
+    height: 80px;
+    max-height: none;
+    transform: translate(-16px, -2px);
+  }
+  .header-identity {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    gap: 4px;
+  }
+  .header-identity strong {
+    font-size: 12px;
+    max-width: 100%;
+  }
+  .header-identity small {
+    font-size: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  .header-progress {
+    display: none;
+  }
   .header-money {
-    margin-left: 0;
+    margin: 0;
+    max-width: 30%;
+    overflow: hidden;
   }
   .header-money .money {
-    font-size: 10px;
     gap: 3px;
+    font-size: 11px;
   }
   .header-money .money svg {
     width: 12px;
     height: 12px;
   }
   .header-money .money small {
-    font-size: 8px;
+    font-size: 9px;
   }
   .connection {
     display: none;
   }
-  .location-bar {
-    padding: 0 13px;
-    font-size: 9px;
+  .mobile-xp {
+    display: block;
+    height: 2px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #2d3a29;
   }
-  .location-bar b {
-    padding: 0 7px;
-  }
-  .save-state {
-    font-size: 8px;
-    gap: 4px;
+  .mobile-xp i {
+    display: block;
+    height: 100%;
+    background: #b49962;
+    transition: width 0.4s;
   }
   .game-main {
-    padding: 9px 10px 10px;
+    padding: 8px;
     gap: 7px;
+  }
+  .page-viewport {
+    border-radius: 4px;
   }
   .main-navigation {
     flex-direction: row;
-    justify-content: space-around;
     align-items: stretch;
-    gap: 2px;
-    padding: 5px 4px;
-    background: #1b261c;
-    border-right: 0;
-    border-top: 1px solid #51603d;
+    justify-content: space-around;
+    gap: 4px;
+    padding: 5px 7px calc(5px + env(safe-area-inset-bottom));
+    border: 0;
+    border-top: 1px solid #536047;
+    background: #1d291e;
     z-index: 10;
   }
   .main-navigation button {
-    height: auto;
     flex: 1;
-    width: auto;
     min-width: 0;
+    height: auto;
     gap: 5px;
-    padding: 4px 2px;
-    font-size: 9px;
+    padding: 5px 2px;
+    font-size: 10px;
     border: 0;
-    border-radius: 3px;
-  }
-  .main-navigation button svg {
-    height: 18px;
-    width: 18px;
+    border-radius: 4px;
+    color: #9baa8a;
   }
   .main-navigation button.active {
     border: 0;
-    background: #34482b;
-    color: #dae0b3;
+    color: #f0e7c4;
+    background: #3b4b31;
   }
   .main-navigation button.active:before {
-    left: calc(50% - 10px);
-    top: -6px;
+    width: 22px;
     height: 2px;
-    width: 20px;
+    top: -6px;
+    left: calc(50% - 11px);
   }
   .main-navigation button i {
-    top: 0;
-    right: 6px;
-    height: 3px;
-    width: 3px;
+    height: 5px;
+    width: 5px;
+    top: 4px;
+    right: calc(50% - 15px);
+  }
+  .section-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    min-height: 29px;
+    align-self: flex-start;
+    font-size: 12px;
+    background: transparent;
+    border: 0;
+    padding: 3px 2px;
+    color: #a0b18c;
   }
   .battle-layout {
     display: block;
@@ -1918,613 +2613,563 @@ button svg {
     display: none;
   }
   .battle-heading {
-    height: 31px;
-    padding: 0 12px;
-    font-size: 10px;
-  }
-  .battle-heading svg {
-    height: 11px;
-    width: 11px;
+    height: 34px;
+    padding: 0 11px;
+    font-size: 11px;
   }
   .mode-indicator {
-    font-size: 9px;
-    gap: 6px;
+    font-size: 10px;
   }
   .battle-arena {
-    min-height: 90px;
-  }
-  .fighter {
-    height: 86%;
-    bottom: 10%;
-    width: 49%;
-    left: 0;
-    max-height: 390px;
-  }
-  .foe-fighter {
-    left: auto;
-    right: 0;
-    max-height: 390px;
-  }
-  .fighter-name {
-    font-size: 14px;
-    bottom: -11px;
-    padding: 2px 4px;
-  }
-  .floating-damage {
-    font-size: 28px;
-    top: 8%;
-  }
-  .floating-damage.critical {
-    font-size: 33px;
-  }
-  .floating-damage small {
-    font-size: 8px;
-  }
-  .camp-label {
-    font-size: 10px;
-    top: 13px;
-  }
-  .ability-flash {
-    font-size: 9px;
-    left: 10px;
-    top: 10px;
-    padding: 5px 7px;
+    min-height: 136px;
   }
   .battle-hud {
-    padding: 11px 12px 9px;
+    padding: 10px 11px;
   }
   .health-row {
-    gap: 16px;
+    gap: 15px;
   }
+  .health-row .meter-label,
   .meter-label {
-    font-size: 10px;
+    font-size: 11px;
     margin-bottom: 5px;
-    gap: 4px;
+    gap: 5px;
+    min-width: 0;
+  }
+  .meter-label > span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   .meter-label b {
-    font-size: 9px;
-  }
-  .health-row .meter-label {
     font-size: 10px;
+    flex-shrink: 0;
   }
   .meter-track {
-    height: 4px;
+    height: 5px;
   }
   .battle-power-row {
-    gap: 16px;
+    gap: 15px;
     margin-top: 8px;
   }
   .battle-power-row .meter {
-    width: calc(50% - 8px);
+    width: calc(50% - 7.5px);
   }
   .round-label {
-    font-size: 9px;
+    font-size: 10px;
   }
   .camp-status {
-    font-size: 12px;
-    min-height: 20px;
+    font-size: 13px;
+    min-height: 26px;
   }
   .skill-hud {
-    gap: 6px;
-    margin-top: 10px;
+    gap: 7px;
+    margin-top: 9px;
   }
   .skill-pill {
-    padding: 5px 7px;
-    gap: 5px;
     flex: 1;
+    min-height: 31px;
+    padding: 6px 7px;
     justify-content: center;
+    gap: 5px;
   }
   .skill-pill b {
-    font-size: 9px;
+    font-size: 10px;
   }
   .skill-pill small {
-    display: inline;
-    font-size: 8px;
-    margin-left: 2px;
+    display: none;
   }
   .skill-pill > span svg {
-    height: 12px;
-    width: 12px;
+    width: 13px;
+    height: 13px;
   }
   .battle-controls {
     gap: 8px;
-    margin-top: 10px;
+    margin-top: 9px;
   }
   .battle-controls .button {
-    min-height: 36px;
+    min-height: 42px;
     padding: 8px 12px;
-    font-size: 11px;
+    font-size: 12px;
   }
-  .battle-note {
-    font-size: 8px;
-    margin-top: 8px;
+  .battle-controls .button > svg {
+    width: 17px;
+    height: 17px;
   }
   .loot-notice {
-    left: 10px;
-    right: 10px;
-    bottom: 10px;
-    padding: 10px 29px 10px 10px;
-    gap: 9px;
+    left: 9px;
+    right: 9px;
+    bottom: 9px;
+    padding: 11px 31px 11px 11px;
+    gap: 10px;
   }
   .loot-notice-copy > strong {
-    font-size: 16px;
+    font-size: 17px;
   }
   .loot-notice-copy > small {
-    font-size: 8px;
+    font-size: 9px;
   }
   .loot-actions {
+    gap: 15px;
     margin-top: 7px;
-    gap: 16px;
   }
   .loot-actions button {
-    font-size: 10px;
+    min-height: 32px;
+    font-size: 12px;
+    padding: 4px;
   }
   .loot-notice .item-symbol {
-    height: 35px;
-    width: 35px;
+    width: 38px;
+    height: 38px;
   }
-  .loot-notice .item-symbol svg {
-    height: 21px;
-    width: 21px;
+  .close-notice {
+    top: 3px;
+    right: 3px;
+    padding: 8px;
   }
   .panel-heading {
-    padding: 17px 17px 16px;
-  }
-  .panel-heading > span {
-    font-size: 7px;
-    letter-spacing: 1.1px;
+    padding: 15px 16px;
   }
   .panel-heading h2 {
-    font-size: 26px;
-    margin-top: 7px;
+    font-size: 25px;
   }
   .panel-heading h2 small {
-    font-size: 10px;
+    font-size: 11px;
   }
   .panel-heading > p {
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.5;
-    margin-top: 10px;
   }
   .page-map .region-map {
-    height: 135px;
+    height: clamp(80px, 17dvh, 125px);
+    padding: 6px;
   }
   .page-map .region-node {
-    padding: 13px 16px;
-    gap: 12px;
+    padding: 12px 15px;
+    gap: 13px;
+    min-height: 81px;
   }
   .page-map .region-node-art {
-    height: 58px;
-    width: 52px;
+    height: 52px;
+    width: 47px;
   }
   .page-map .region-node-art .enemy-sprite {
-    height: 76px;
-    width: 65px;
+    width: 63px;
+    height: 72px;
   }
   .page-map .region-node-copy strong {
-    font-size: 17px;
+    font-size: 18px;
   }
   .page-map .region-node-copy > span {
     font-size: 10px;
   }
   .page-map .region-node-copy small {
-    font-size: 9px;
+    font-size: 10px;
   }
   .camp-button {
-    margin: 12px;
-    font-size: 11px;
-    padding: 10px;
-    min-height: 44px;
+    min-height: 45px;
+    padding: 10px 13px;
+    margin: 11px;
+    font-size: 12px;
   }
   .camp-button small {
-    font-size: 9px;
-  }
-  .quest-entry {
-    padding: 18px 16px;
-  }
-  .quest-top h3 {
-    font-size: 20px;
-  }
-  .quest-giver {
-    font-size: 10px;
-  }
-  .quest-entry > p {
-    font-size: 11px;
-    line-height: 1.6;
-    margin: 12px 0 15px;
-  }
-  .quest-entry .meter {
-    margin: 14px 0;
-  }
-  .quest-bottom > span {
-    font-size: 10px;
-  }
-  .quest-bottom .money {
-    font-size: 10px;
-  }
-  .quest-bottom .button {
-    font-size: 11px;
-    min-height: 34px;
-    padding: 8px 12px;
-  }
-  .rarity-legend {
-    font-size: 8px;
-    gap: 9px 14px;
-    margin-top: 13px;
+    display: none;
   }
   .item-heading {
-    padding: 14px 15px;
-    gap: 11px;
+    gap: 12px;
+    padding: 17px 15px;
   }
   .item-heading strong {
-    font-size: 18px;
+    font-size: 19px;
   }
   .item-heading small {
-    font-size: 9px;
-    line-height: 1.5;
+    font-size: 10px;
+    line-height: 1.4;
   }
   .item-symbol {
-    height: 39px;
-    width: 39px;
+    width: 41px;
+    height: 41px;
   }
   .item-detail {
-    padding: 0 17px 17px 66px;
-    font-size: 11px;
+    padding: 0 16px 17px 68px;
+    font-size: 12px;
   }
   .item-detail > strong {
-    font-size: 10px;
+    font-size: 11px;
   }
   .item-detail .button {
-    margin-top: 12px;
-    font-size: 11px;
-    min-height: 34px;
-  }
-  .hero-sheet {
-    padding: 15px;
-    gap: 10px;
-    max-width: 450px;
-  }
-  .hero-preview {
-    height: 205px;
-    width: 170px;
-  }
-  .hero-stats {
-    gap: 18px 17px;
-  }
-  .hero-stats small {
-    font-size: 9px;
-  }
-  .hero-stats b {
-    font-size: 20px;
-  }
-  .equipped-list {
-    margin: 0 15px 15px;
-  }
-  .equipment-row {
-    padding: 12px 11px;
-    gap: 11px;
-  }
-  .equipment-row strong {
-    font-size: 17px;
-  }
-  .equipment-row small {
-    font-size: 9px;
-  }
-  .equipment-row > div > span {
-    font-size: 9px;
-  }
-  .text-button {
-    font-size: 10px;
-    padding: 6px;
-  }
-  .hero-view > .rarity-legend {
-    padding: 0 15px 15px;
-  }
-  .skill-entry {
-    padding: 18px 16px;
-  }
-  .skill-title {
-    gap: 10px;
-  }
-  .skill-title h3 {
-    font-size: 20px;
-  }
-  .skill-title small {
-    font-size: 9px;
-  }
-  .skill-glyph {
-    height: 39px;
-    width: 39px;
-  }
-  .skill-glyph svg {
-    width: 21px;
-    height: 21px;
-  }
-  .skill-entry p {
-    font-size: 11px;
-    line-height: 1.6;
-    margin: 14px 0 10px;
-  }
-  .skill-policy {
-    font-size: 9px;
-    padding: 5px 7px;
+    min-height: 42px;
+    font-size: 12px;
+    margin-top: 13px;
   }
   .segmented {
-    margin-top: 14px;
+    margin-top: 13px;
   }
   .segmented button {
-    font-size: 10px;
-    padding: 7px 11px;
+    min-height: 38px;
+    font-size: 12px;
+    padding: 8px 13px;
   }
   .event-row {
     gap: 12px;
-    padding: 13px 15px;
+    padding: 16px;
   }
   .event-row time {
-    font-size: 9px;
+    font-size: 10px;
   }
   .event-row p {
-    font-size: 11px;
+    font-size: 12px;
+    line-height: 1.6;
   }
   .drop-row {
-    padding: 14px 15px;
-    gap: 10px;
+    padding: 16px 14px;
+    gap: 11px;
   }
   .drop-row strong {
-    font-size: 17px;
+    font-size: 18px;
   }
   .drop-row small {
-    font-size: 9px;
+    font-size: 10px;
     line-height: 1.5;
   }
   .drop-row time {
-    font-size: 9px;
-  }
-  .error-banner {
     font-size: 10px;
-    padding: 8px 10px;
-    gap: 7px;
   }
-  .error-banner button {
-    font-size: 10px;
+  .error-banner,
+  .offline-banner {
+    font-size: 11px;
+    padding: 8px 11px;
+    gap: 8px;
+    line-height: 1.5;
+  }
+  .error-banner button,
+  .offline-banner button {
+    min-height: 28px;
+    padding: 4px;
   }
   .offline-banner {
-    font-size: 9px;
-    padding: 8px 10px;
+    position: absolute;
+    z-index: 20;
+    top: 68px;
+    left: 15px;
+    right: 15px;
+    box-shadow: 0 8px 25px #09140ca6;
   }
   .creation-mode {
     grid-template-columns: 1fr;
-    grid-template-rows: 64px minmax(0, 1fr);
+    grid-template-rows: 58px minmax(0, 1fr);
     grid-template-areas: 'header' 'main';
   }
-  .creation-mode .connection {
-    display: flex;
-    font-size: 10px;
+  .creation-mode .app-header {
+    justify-content: center;
   }
   .creation-mode .game-main {
-    padding: 10px;
+    padding: 8px;
   }
   .character-creation {
     border: 0;
-    background: #1a281f;
+    background: #152019;
   }
   .character-creation form {
-    padding: 20px 17px;
-    width: 440px;
-    max-height: 100%;
-    border: 1px solid #54683f;
-    background: #1d2b1fef;
-  }
-  .character-creation form > header {
-    gap: 10px;
-    margin-bottom: 17px;
-  }
-  .character-creation header .folk-knot {
-    width: 28px;
-    height: 31px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(100px, 1fr) auto auto;
+    grid-template-areas: 'title' 'steps' 'avatar' 'choices' 'actions';
+    gap: 13px;
+    width: 100%;
+    height: 100%;
+    max-width: 490px;
+    padding: 18px 16px;
+    border-color: #46553d;
   }
   .character-creation h1 {
-    font-size: 23px;
+    font-size: 25px;
   }
-  .character-creation header > div > span {
-    font-size: 7px;
-    letter-spacing: 1px;
+  .creation-step-count {
+    font-size: 14px;
   }
-  .name-field {
-    font-size: 10px;
-    gap: 12px;
-    margin-bottom: 16px;
+  .creation-steps {
+    gap: 9px;
   }
-  .name-field input {
-    padding: 10px 11px;
-    font-size: 11px;
-  }
-  .creation-body {
-    grid-template-columns: 138px minmax(0, 1fr);
-    gap: 12px;
+  .creation-steps button {
+    font-size: 12px;
+    min-height: 36px;
+    padding: 7px 3px;
   }
   .creation-avatar {
-    height: 252px;
-    width: 155px;
-    transform: translateX(-7px);
+    min-height: 0;
+    width: 100%;
+    height: auto;
+    transform: none;
+  }
+  .creation-avatar .character-sprite {
+    max-height: none;
+    max-width: 310px;
+  }
+  .creation-avatar-name {
+    font-size: 21px;
+    bottom: 3px;
   }
   .appearance-settings {
-    gap: 11px;
+    gap: 15px;
+    width: 100%;
   }
   .appearance-settings legend {
-    font-size: 9px;
-    margin-bottom: 6px;
-  }
-  .appearance-settings fieldset > div {
-    gap: 4px;
+    font-size: 11px;
+    margin-bottom: 7px;
   }
   .appearance-settings button {
-    font-size: 8px;
-    padding: 7px 4px;
-    min-height: 29px;
+    font-size: 12px;
+    padding: 8px 7px;
+    min-height: 43px;
+  }
+  .appearance-settings .name-field {
+    font-size: 11px;
+    gap: 7px;
+  }
+  .name-field input {
+    min-height: 44px;
+    font-size: 16px;
+    padding: 9px 11px;
+  }
+  .creation-actions {
+    gap: 8px;
   }
   .create-button {
-    margin-top: 19px;
-    min-height: 40px;
+    min-height: 44px;
+    font-size: 13px;
+  }
+  .creation-back {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .creation-name-hint {
+    grid-column: 1;
     font-size: 11px;
-  }
-  .creation-save-note {
-    font-size: 9px;
-    margin-top: 10px;
-  }
-  .empty-state {
-    font-size: 11px;
-    padding: 17px;
-  }
-  .fighter.attacking .sprite-weapon {
-    transform-origin: 169px 150px;
+    min-height: 22px;
   }
 }
-@media (max-width: 400px) {
+@media (max-width: 360px) {
   .app-header {
-    gap: 9px;
-    padding: 0 11px;
+    gap: 10px;
+    padding: 0 10px;
   }
   .brand > span {
     font-size: 22px;
-    letter-spacing: 1.3px;
+    letter-spacing: 1px;
   }
-  .brand {
-    gap: 5px;
-  }
-  .brand .folk-knot {
-    width: 22px;
-  }
-  .header-character {
-    gap: 6px;
+  .header-portrait {
+    width: 26px;
   }
   .header-identity strong {
-    max-width: 87px;
+    font-size: 11px;
   }
   .header-identity small {
-    font-size: 7px;
-  }
-  .header-money .money {
     font-size: 9px;
   }
+  .header-money .money {
+    font-size: 10px;
+    gap: 2px;
+  }
   .header-money .money svg {
-    height: 11px;
-    width: 11px;
+    display: none;
+  }
+  .game-main {
+    padding: 7px;
+  }
+  .main-navigation {
+    padding-left: 4px;
+    padding-right: 4px;
+    gap: 3px;
+  }
+  .main-navigation button {
+    font-size: 10px;
+  }
+  .battle-heading {
+    font-size: 10px;
+  }
+  .battle-controls .button {
+    font-size: 11px;
+    padding: 8px 10px;
+  }
+  .health-row .meter-label,
+  .meter-label {
+    font-size: 10px;
   }
   .skill-pill {
     padding: 5px;
     gap: 4px;
   }
   .skill-pill b {
-    font-size: 8px;
+    font-size: 9px;
   }
-  .skill-pill small {
-    font-size: 8px;
+  .compact-heading {
+    padding: 13px;
   }
-  .creation-body {
-    grid-template-columns: 126px minmax(0, 1fr);
-    gap: 9px;
+  .compact-hero .compact-heading h2 {
+    font-size: 22px;
   }
-  .creation-avatar {
-    width: 142px;
-    height: 245px;
+  .compact-hero .compact-heading small {
+    font-size: 9px;
+  }
+  .compact-stat-grid {
+    gap: 10px 4px;
+    padding: 12px 10px 14px;
+  }
+  .compact-stat-grid dt {
+    font-size: 9px;
+  }
+  .compact-stat-grid dd {
+    font-size: 21px;
+  }
+  .compact-quest-row {
+    padding: 19px 13px;
+    gap: 10px;
+  }
+  .compact-quest-row strong {
+    font-size: 19px;
+  }
+  .compact-equipment {
+    padding: 13px 10px;
+    gap: 8px;
+  }
+  .compact-equipment strong {
+    font-size: 16px;
+  }
+  .compact-equipment .item-symbol {
+    width: 35px;
+    height: 35px;
+  }
+  .compact-skill-picker {
+    padding: 12px 11px 0;
+    gap: 6px;
+  }
+  .compact-skill-picker button {
+    min-height: 79px;
+  }
+  .compact-skill-detail {
+    padding: 13px;
+  }
+  .compact-skill-detail h3 {
+    font-size: 22px;
+  }
+  .compact-skill-detail > p {
+    font-size: 11px;
+  }
+  .more-links button {
+    min-height: 79px;
+    padding: 19px 15px;
+  }
+  .more-links strong {
+    font-size: 21px;
   }
   .appearance-settings button {
-    font-size: 7.5px;
-    padding: 7px 3px;
-  }
-  .character-creation form {
-    padding: 18px 15px;
-  }
-  .hero-preview {
-    width: 145px;
-  }
-  .hero-stats {
-    gap: 17px 14px;
-  }
-  .hero-stats small {
-    font-size: 8px;
-  }
-  .hero-sheet {
-    gap: 11px;
+    font-size: 11px;
+    gap: 5px;
   }
 }
-@media (max-height: 700px) and (max-width: 750px) {
+@media (max-width: 750px) and (max-height: 680px) {
   .app-shell {
-    grid-template-rows: 58px 28px minmax(0, 1fr) 58px;
+    grid-template-rows: 54px minmax(0, 1fr) calc(58px + env(safe-area-inset-bottom));
+  }
+  .main-navigation {
+    padding-top: 4px;
+    padding-bottom: calc(4px + env(safe-area-inset-bottom));
   }
   .battle-heading {
-    height: 28px;
-  }
-  .game-main {
-    padding-top: 7px;
-    padding-bottom: 7px;
+    height: 30px;
   }
   .battle-hud {
-    padding-top: 9px;
-    padding-bottom: 8px;
+    padding: 8px 10px;
   }
-  .battle-note {
-    margin-top: 6px;
-    font-size: 8px;
-  }
-  .fighter {
-    height: 87%;
-    bottom: 11%;
-  }
-  .skill-hud {
-    margin-top: 8px;
-  }
+  .battle-power-row,
+  .skill-hud,
   .battle-controls {
-    margin-top: 8px;
-  }
-  .battle-controls .button {
-    min-height: 34px;
-  }
-  .battle-power-row {
     margin-top: 7px;
   }
+  .battle-controls .button {
+    min-height: 39px;
+  }
   .skill-pill {
-    padding: 4px 5px;
+    min-height: 27px;
   }
   .page-map .region-map {
-    height: 105px;
+    height: 78px;
   }
   .page-map .region-node {
+    min-height: 72px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .page-map .region-node-copy {
+    gap: 4px;
+  }
+  .camp-button {
+    margin: 8px;
+    min-height: 42px;
+  }
+  .compact-heading {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .compact-hero .compact-tabs {
+    margin-top: 0;
+  }
+  .compact-hero .compact-tabs button {
+    min-height: 32px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+  .compact-skill-detail > p {
+    margin: 11px 0;
+  }
+  .compact-objective {
+    margin-top: 12px;
     padding-top: 11px;
-    padding-bottom: 11px;
+  }
+  .compact-footer {
+    padding: 10px 12px;
+  }
+  .offline-banner {
+    top: 62px;
   }
   .creation-mode {
-    grid-template-rows: 58px minmax(0, 1fr);
+    grid-template-rows: 54px minmax(0, 1fr);
   }
   .character-creation form {
-    padding: 16px 15px;
+    padding: 13px;
+    gap: 9px;
   }
-  .character-creation form > header {
-    margin-bottom: 14px;
+  .character-creation h1 {
+    font-size: 23px;
   }
-  .creation-avatar {
-    height: 223px;
+  .creation-steps button {
+    min-height: 32px;
   }
   .appearance-settings {
-    gap: 9px;
+    gap: 10px;
+  }
+  .appearance-settings legend,
+  .appearance-settings .name-field {
+    font-size: 10px;
   }
   .appearance-settings legend {
     margin-bottom: 5px;
   }
+  .appearance-settings .name-field {
+    gap: 5px;
+  }
   .appearance-settings button {
-    min-height: 26px;
-    padding-top: 6px;
-    padding-bottom: 6px;
+    min-height: 39px;
   }
-  .create-button {
-    margin-top: 16px;
+  .name-field input {
+    min-height: 41px;
   }
-  .name-field {
-    margin-bottom: 12px;
+  .creation-avatar-name {
+    font-size: 18px;
   }
-  .creation-save-note {
-    font-size: 9px;
+  .creation-name-hint {
+    font-size: 10px;
+    min-height: 18px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2535,58 +3180,57 @@ button svg {
     transition-duration: 0.01ms !important;
   }
 }
-.brand > span {
-  font-family: 'Ruslan Display', 'Podkova', serif;
-  font-size: 31px;
-  letter-spacing: 4px;
+.header-portrait .character-sprite.is-portrait {
+  width: 100%;
+  height: 100%;
+  transform: none;
+  max-height: none;
 }
-.brand small {
-  font-family: 'Golos Text', sans-serif;
+.compact-equipment-slots {
+  flex-shrink: 0;
+  padding: 13px 12px 16px;
+  border-top: 1px solid #3a4932;
+  background: #202c20;
 }
-@media (max-width: 750px) {
-  .brand > span {
-    font-size: 25px;
-    letter-spacing: 2px;
+.compact-equipment-slots .inventory-equipped {
+  flex-shrink: 0;
+  gap: 25px;
+}
+.compact-equipment-slots .inventory-equipped-cell {
+  flex-basis: 62px;
+}
+.compact-equipment-slots .inventory-slot.equipped-slot {
+  width: 58px;
+  height: 58px;
+}
+.compact-equipment-slots + .compact-footer {
+  border-top: 0;
+  padding-top: 0;
+}
+@media (max-width: 750px) and (max-height: 680px) {
+  .compact-equipment-slots {
+    padding-top: 10px;
+    padding-bottom: 11px;
   }
-  .brand {
-    min-width: 83px;
-  }
-  .header-identity strong {
-    max-width: 125px;
-  }
-  .header-identity small {
-    font-size: 9px;
-  }
-  .header-money .money {
-    font-size: 11px;
+  .compact-equipment-slots .inventory-slot.equipped-slot {
+    width: 49px;
+    height: 49px;
   }
 }
-@media (max-width: 750px) {
-  .brand,
-  .header-portrait,
-  .header-money {
-    flex-shrink: 0;
-  }
-  .header-character {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-  }
-  .header-identity {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-  }
-  .header-identity strong {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .header-identity small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 100%;
-  }
+
+/* World name belongs to lore; creation needs no empty branded header. */
+.creation-mode {
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: 'main';
+}
+.creation-mode .app-header {
+  display: none;
+}
+
+.hero-equipment-slots {
+  padding: 8px 24px 24px;
+}
+.hero-equipment-slots .inventory-equipped {
+  justify-content: center;
+  gap: 36px;
 }

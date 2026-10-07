@@ -15,7 +15,8 @@
     "db:migrate": "npm run db:migrate -w @azeroth/server",
     "format": "prettier --write apps packages tests *.json *.md .github/workflows/*.yml",
     "db:cleanup": "npm run db:cleanup -w @azeroth/server",
-    "preview": "npm run build && node scripts/preview.mjs"
+    "preview": "npm run build && node scripts/preview.mjs",
+    "art:prepare": "node scripts/prepare-art.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.18.6",

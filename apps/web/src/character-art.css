@@ -1,0 +1,77 @@
+/* Painted paper dolls. Every layer is a registered raster crop; no shape overlays. */
+.character-sprite,
+.enemy-sprite {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 11 / 14;
+  container-type: size;
+  isolation: isolate;
+  pointer-events: none;
+}
+.character-art,
+.enemy-art {
+  position: absolute;
+  display: block;
+  width: min(100cqw, 78.57143cqh);
+  height: min(127.27273cqw, 100cqh);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transform-origin: 54% 20%;
+  overflow: visible;
+}
+.painted-part {
+  position: absolute;
+  display: block;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+  image-rendering: auto;
+}
+.character-art .sprite-weapon {
+  z-index: 1;
+}
+.character-head {
+  z-index: 4;
+  /* Atlas braid tips overlap the next row only in its empty top-right corner. */
+  clip-path: polygon(0 0, 82% 0, 100% 17%, 100% 100%, 0 100%);
+}
+.character-body {
+  z-index: 3;
+}
+.character-trinket {
+  z-index: 5;
+}
+.character-sprite.is-portrait .character-art {
+  transform: translate(-50%, -50%) scale(2.65);
+  transform-origin: 54% 0%;
+}
+.character-sprite.is-portrait {
+  overflow: hidden;
+}
+@supports not (width: 1cqw) {
+  .character-art,
+  .enemy-art {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* Combat cards show the face, shoulders and held weapon together. */
+.fighter-portrait .character-sprite.is-portrait .character-art {
+  transform: translate(-50%, -50%) scale(1.45);
+  transform-origin: 44% 1%;
+}
+
+/* Exclude the previous atlas row's mace tip from the thunder axe crop. */
+.character-art .sprite-weapon.is-thunder {
+  clip-path: polygon(0 0, 25% 0, 25% 4.5%, 100% 4.5%, 100% 100%, 0 100%);
+}
+
+/* The forest spirit's antlers are wider than its trunk. Exclude the adjacent wolf. */
+.enemy-sprite[data-mob='kobold'] .painted-part {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 12% 100%, 18% 25%, 0 25%);
+}

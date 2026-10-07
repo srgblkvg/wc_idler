@@ -1,0 +1,479 @@
+.battle-panel .battle-arena {
+  perspective: 1100px;
+  animation: none;
+}
+.battle-arena .fighter {
+  bottom: 12%;
+  height: 77%;
+  max-height: 360px;
+  width: 36%;
+  max-width: 238px;
+  display: block;
+  perspective: 800px;
+  isolation: isolate;
+}
+.battle-arena .hero-fighter {
+  left: 9%;
+}
+.battle-arena .foe-fighter {
+  left: auto;
+  right: 9%;
+}
+.battle-arena .fighter-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+  width: 100%;
+  border: 1px solid #95836b;
+  background: #242924;
+  border-radius: 7px;
+  transform-origin: 50% 60%;
+  box-shadow:
+    0 12px 22px #040b0ac4,
+    0 0 0 3px #11181388,
+    inset 0 0 0 1px #c0a58124;
+  will-change: transform;
+}
+.battle-arena .foe-fighter .fighter-card {
+  border-color: #806859;
+  background: #2b2822;
+}
+.fighter-portrait {
+  min-height: 0;
+  position: relative;
+  border-radius: 6px 6px 0 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 42%, #76746270, #25302900 72%),
+    linear-gradient(160deg, #394037, #1b231e);
+}
+.foe-fighter .fighter-portrait {
+  background:
+    radial-gradient(ellipse at 50% 45%, #82715875, #252a2300 75%),
+    linear-gradient(155deg, #3a3c2f, #232a21);
+}
+.fighter-portrait:after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  box-shadow: inset 0 0 18px #131c1555;
+  background: linear-gradient(0deg, #10181165, transparent 25%);
+}
+.battle-arena .fighter-portrait .character-sprite,
+.battle-arena .fighter-portrait .enemy-sprite {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  margin: 0;
+  overflow: visible;
+  filter: drop-shadow(0 8px 4px #0b120b66);
+}
+.battle-arena .fighter .fighter-name {
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 37px;
+  max-height: 54px;
+  margin: 0;
+  padding: 8px 6px;
+  border-top: 1px solid #8d7b5e55;
+  font-family: var(--body, 'Golos Text', sans-serif);
+  font-size: clamp(11px, 1vw, 14px);
+  font-weight: 500;
+  line-height: 1.15;
+  color: #e1d7c0;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-shadow: none;
+  background: #1b221def;
+  border-radius: 0 0 6px 6px;
+}
+.card-level {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border: 1px solid #baa58271;
+  background: #151e1be8;
+  border-radius: 50%;
+  font:
+    500 11px 'Golos Text',
+    sans-serif;
+  color: #c6b58e;
+  z-index: 4;
+}
+.battle-arena .floating-damage {
+  left: 50%;
+  top: 22%;
+  color: #ffe3c9;
+  font-family: 'Golos Text', sans-serif;
+  font-size: clamp(28px, 3vw, 42px);
+  font-weight: 700;
+  line-height: 1;
+  text-shadow:
+    0 2px 0 #231b13,
+    0 3px 12px #090d0b;
+  animation: card-number-rise 490ms 330ms cubic-bezier(0.15, 0.6, 0.3, 1) both;
+  transform: translateX(-50%);
+}
+.battle-arena .floating-damage.critical {
+  color: #ffcc77;
+  font-size: clamp(33px, 3.6vw, 49px);
+}
+.battle-arena .floating-damage small {
+  margin-top: 5px;
+  font-size: 9px;
+  font-weight: 500;
+  color: #f2d6a3;
+}
+.battle-arena .floating-damage.heal {
+  color: #c2e5ab;
+}
+.battle-arena .floating-damage.missed {
+  font-size: clamp(14px, 1.8vw, 21px);
+  color: #d0d5ca;
+  font-weight: 500;
+}
+.card-impact {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 55% 45%, #f7dec268 0%, transparent 65%);
+  box-shadow: inset 0 0 28px #e7c8a155;
+  animation: card-contact 240ms 330ms ease-out both;
+}
+.card-impact.critical {
+  background: radial-gradient(ellipse at 55% 45%, #ffe1a08a, #e9ad3030 50%, transparent);
+  box-shadow: inset 0 0 28px #d09a5799;
+}
+.card-aura {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.ward-aura {
+  box-shadow:
+    inset 0 0 22px #9ab6ce78,
+    inset 0 0 0 2px #adc6ce95;
+  background: radial-gradient(ellipse at center, transparent 40%, #92c1c724);
+}
+.healing-aura {
+  animation: card-healing 720ms ease-out both;
+  background: linear-gradient(0deg, #b6d68377, transparent 85%);
+  box-shadow: inset 0 0 26px #c3d79c66;
+}
+.card-outcome {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 44%;
+  padding: 9px 3px;
+  color: #e3d1b2;
+  background: #181b16da;
+  border-block: 1px solid #baa78255;
+  text-align: center;
+  font-family: var(--display);
+  font-size: 20px;
+  z-index: 4;
+  animation: card-verdict 180ms ease-out both;
+}
+.arena-result {
+  position: absolute;
+  top: 7%;
+  left: 10%;
+  right: 10%;
+  text-align: center;
+  color: #d2c097;
+  font-size: 12px;
+  z-index: 5;
+  text-shadow: 0 2px 5px #07110c;
+  animation: card-verdict 180ms ease-out both;
+  pointer-events: none;
+}
+.battle-arena .loot-notice {
+  bottom: 12px;
+  left: 16px;
+  right: 16px;
+  max-width: 520px;
+  margin-inline: auto;
+  padding: 12px 35px 12px 13px;
+  border-color: currentColor;
+  border-radius: 5px;
+  background: #172019f5;
+  box-shadow:
+    0 8px 28px #020804bb,
+    inset 0 0 22px #ffffff04;
+  animation: card-loot-arrive 390ms cubic-bezier(0.15, 0.7, 0.3, 1) both;
+}
+.battle-arena .loot-actions button {
+  min-height: 30px;
+  padding: 3px 1px;
+}
+.battle-arena .loot-actions button:first-child {
+  color: #e6dec0;
+}
+.battle-arena .close-notice {
+  min-width: 30px;
+  min-height: 30px;
+  top: 5px;
+  right: 4px;
+  justify-content: center;
+  align-items: center;
+}
+.battle-panel .battle-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 17px;
+}
+.battle-panel .battle-actions-row .skill-hud {
+  margin: 0;
+  gap: 10px;
+}
+.battle-panel .battle-actions-row .battle-controls {
+  margin: 0;
+  flex: 0 1 205px;
+  gap: 8px;
+}
+.battle-panel .battle-controls .rest-control {
+  flex: 0 0 44px;
+  width: 44px;
+  padding-inline: 0;
+}
+.battle-panel .battle-controls .button {
+  min-height: 44px;
+}
+.camp-place {
+  position: absolute;
+  left: 58%;
+  width: 26%;
+  top: 35%;
+  bottom: 15%;
+  display: grid;
+  place-items: center;
+}
+.camp-embers {
+  position: relative;
+  height: 100px;
+  width: 110px;
+}
+.camp-embers:before {
+  content: '';
+  position: absolute;
+  inset: 25% -50% -20%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #b86c3247, transparent 68%);
+}
+.camp-embers:after {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 14px;
+  height: 13px;
+  border-radius: 50%;
+  background: #241f15;
+  box-shadow:
+    0 3px 8px #020907,
+    inset 0 0 5px #bb662d;
+}
+.camp-embers i {
+  position: absolute;
+  bottom: 20px;
+  left: 45px;
+  width: 27px;
+  height: 48px;
+  background: linear-gradient(0deg, #e0c178, #b87334 55%, transparent);
+  border-radius: 65% 5% 60% 25%;
+  transform: rotate(-18deg);
+  filter: blur(1px);
+  animation: ember-breathe 2s ease-in-out infinite alternate;
+}
+.camp-embers i:nth-child(2) {
+  width: 18px;
+  height: 36px;
+  left: 31px;
+  bottom: 17px;
+  transform: rotate(-32deg);
+  animation-delay: -0.8s;
+  opacity: 0.8;
+}
+.camp-embers i:nth-child(3) {
+  width: 20px;
+  height: 43px;
+  left: 63px;
+  bottom: 17px;
+  transform: rotate(28deg);
+  animation-delay: -0.4s;
+  opacity: 0.65;
+}
+@keyframes card-number-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 7px) scale(0.8);
+  }
+  16% {
+    opacity: 1;
+    transform: translate(-50%, -3px) scale(1.09);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -44px) scale(0.97);
+  }
+}
+@keyframes card-contact {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes card-healing {
+  0% {
+    opacity: 0;
+  }
+  33% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes card-verdict {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes card-loot-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes ember-breathe {
+  from {
+    opacity: 0.7;
+    scale: 0.92 1;
+  }
+  to {
+    opacity: 1;
+    scale: 1 1.12;
+  }
+}
+@media (max-width: 760px) {
+  .battle-arena .fighter {
+    width: 37%;
+    height: 74%;
+    max-height: 330px;
+    bottom: 14%;
+  }
+  .battle-arena .hero-fighter {
+    left: 8%;
+  }
+  .battle-arena .foe-fighter {
+    right: 8%;
+  }
+  .battle-arena .fighter .fighter-name {
+    min-height: 33px;
+    padding: 6px 4px;
+    font-size: 11px;
+  }
+  .card-level {
+    top: 6px;
+    left: 6px;
+    height: 22px;
+    width: 22px;
+    font-size: 10px;
+  }
+  .card-outcome {
+    font-size: 17px;
+  }
+  .battle-arena .loot-notice {
+    left: 9px;
+    right: 9px;
+    bottom: 9px;
+    padding: 9px 30px 9px 9px;
+  }
+  .battle-arena .loot-notice-copy > strong {
+    font-size: 16px;
+  }
+  .battle-arena .loot-actions {
+    margin-top: 3px;
+    gap: 20px;
+  }
+  .battle-arena .loot-actions button {
+    font-size: 11px;
+  }
+  .battle-panel .battle-actions-row {
+    margin-top: 13px;
+    gap: 12px;
+  }
+  .battle-panel .battle-actions-row .battle-controls {
+    flex-basis: 160px;
+  }
+  .battle-panel .battle-controls .button {
+    min-height: 40px;
+    padding: 7px 10px;
+  }
+  .battle-panel .battle-controls .rest-control {
+    flex-basis: 40px;
+    width: 40px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .battle-arena .fighter-card {
+    will-change: auto;
+  }
+  .battle-arena .floating-damage {
+    animation: none;
+    opacity: 1;
+    transform: translate(-50%, -8px);
+  }
+  .battle-arena .card-impact {
+    animation: none;
+    opacity: 0.22;
+  }
+  .battle-arena .healing-aura {
+    animation: none;
+    opacity: 0.45;
+  }
+  .battle-arena .loot-notice,
+  .card-outcome,
+  .arena-result {
+    animation: none;
+  }
+  .camp-embers i {
+    animation: none;
+  }
+}

@@ -1,5 +1,3 @@
-import '@fontsource/ruslan-display/cyrillic-400.css';
-import '@fontsource/ruslan-display/latin-400.css';
 import '@fontsource/podkova/cyrillic-400.css';
 import '@fontsource/podkova/latin-400.css';
 import '@fontsource/golos-text/latin-400.css';

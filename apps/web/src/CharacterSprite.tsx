@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import type { CSSProperties } from 'react';
 import {
   ITEM_BY_ID,
   DEFAULT_APPEARANCE,
@@ -6,272 +6,255 @@ import {
   type ItemDefinition,
   type PublicPlayerState,
 } from '@azeroth/game';
+import './character-art.css';
+
 export { DEFAULT_APPEARANCE } from '@azeroth/game';
 export type { Appearance } from '@azeroth/game';
-type VisualItem = ItemDefinition & {
-  armorStyle?: 'cloth' | 'leather' | 'chain';
-  weaponStyle?: 'axe' | 'sword' | 'mace';
-  accentColor?: string;
+
+type VisualItem = ItemDefinition & ItemDefinition['visual'];
+type Point = readonly [number, number];
+type Box = readonly [number, number, number, number];
+type Outfit = { box: Box; neck: Point; grip: Point };
+const ATLAS_WIDTH = 1536;
+const ATLAS_HEIGHT = 1024;
+const FRAME_WIDTH = 220;
+const FRAME_HEIGHT = 280;
+const NECK: Point = [119, 65];
+const BODY_SCALE = 0.418;
+
+// Each painted part is registered to a neck or grip anchor. Adding an outfit is
+// an art-manifest change; equipment selection still comes from domain metadata.
+const OUTFITS: Record<Appearance['gender'], Record<'cloth' | 'chain' | 'leather', Outfit>> = {
+  male: {
+    cloth: { box: [137, 0, 385, 512], neck: [335, 20], grip: [175, 122] },
+    chain: { box: [586, 0, 386, 512], neck: [782, 20], grip: [619, 122] },
+    leather: { box: [1036, 0, 388, 512], neck: [1230, 20], grip: [1064, 123] },
+  },
+  female: {
+    cloth: { box: [137, 512, 385, 512], neck: [335, 538], grip: [176, 634] },
+    chain: { box: [586, 512, 386, 512], neck: [780, 538], grip: [620, 634] },
+    leather: { box: [1036, 512, 388, 512], neck: [1229, 538], grip: [1064, 634] },
+  },
 };
+const HEAD_COLUMNS = [
+  { x: 117, width: 275, neckX: 266 },
+  { x: 454, width: 284, neckX: 607 },
+  { x: 802, width: 281, neckX: 942 },
+  { x: 1151, width: 303, neckX: 1306 },
+] as const;
+const HEAD_ROWS = {
+  dark: { y: 0, height: 342, neckY: 293 },
+  fair: { y: 342, height: 337, neckY: 631 },
+  red: { y: 679, height: 345, neckY: 967 },
+} as const;
+const WEAPONS: Record<
+  'mace' | 'axe' | 'sword' | 'thunder',
+  { box: Box; grip: Point; scale: number; rotate?: number }
+> = {
+  mace: { box: [235, 0, 176, 522], grip: [321, 399], scale: 0.24 },
+  axe: { box: [650, 0, 255, 529], grip: [713, 406], scale: 0.24 },
+  sword: { box: [1110, 0, 222, 570], grip: [1211, 105], scale: 0.224, rotate: 180 },
+  thunder: { box: [152, 511, 350, 513], grip: [379, 842], scale: 0.245 },
+};
+
 export function equippedItem(
   player: PublicPlayerState,
   slot: 'weapon' | 'armor' | 'trinket',
 ): VisualItem | null {
-  const instance = player.inventory.find((i) => i.instanceId === player.equipment[slot]);
+  const instance = player.inventory.find((item) => item.instanceId === player.equipment[slot]);
   return instance
     ? { ...ITEM_BY_ID[instance.itemId], ...ITEM_BY_ID[instance.itemId].visual }
     : null;
 }
+
+function AtlasPart({
+  file,
+  box,
+  position,
+  size,
+  className = '',
+  testId,
+  rotate,
+}: {
+  file: string;
+  box: Box;
+  position: Point;
+  size: Point;
+  className?: string;
+  testId?: string;
+  rotate?: number;
+}) {
+  const [x, y, width, height] = box;
+  const style: CSSProperties = {
+    left: `${(position[0] / FRAME_WIDTH) * 100}%`,
+    top: `${(position[1] / FRAME_HEIGHT) * 100}%`,
+    width: `${(size[0] / FRAME_WIDTH) * 100}%`,
+    height: `${(size[1] / FRAME_HEIGHT) * 100}%`,
+    backgroundImage: `url("${file}")`,
+    backgroundSize: `${(ATLAS_WIDTH / width) * 100}% ${(ATLAS_HEIGHT / height) * 100}%`,
+    backgroundPosition: `${width === ATLAS_WIDTH ? 0 : (x / (ATLAS_WIDTH - width)) * 100}% ${height === ATLAS_HEIGHT ? 0 : (y / (ATLAS_HEIGHT - height)) * 100}%`,
+    transform: rotate ? `rotate(${rotate}deg)` : undefined,
+  };
+  return (
+    <span
+      className={`painted-part ${className}`}
+      style={style}
+      data-testid={testId}
+      aria-hidden="true"
+    />
+  );
+}
+
+function anchoredPosition(
+  box: Box,
+  sourceAnchor: Point,
+  targetAnchor: Point,
+  scale: number,
+): Point {
+  return [
+    targetAnchor[0] - (sourceAnchor[0] - box[0]) * scale,
+    targetAnchor[1] - (sourceAnchor[1] - box[1]) * scale,
+  ];
+}
+
 export function CharacterSprite({
   player,
   appearance = DEFAULT_APPEARANCE,
   className = '',
+  portrait = false,
 }: {
   player?: PublicPlayerState;
   appearance?: Appearance;
   className?: string;
+  portrait?: boolean;
 }) {
-  const id = useId().replace(/:/g, '');
-  const look = player?.appearance || appearance;
-  const female = look.gender === 'female';
-  const armor = player ? equippedItem(player, 'armor') : null,
-    weapon = player ? equippedItem(player, 'weapon') : null,
-    trinket = player ? equippedItem(player, 'trinket') : null;
-  const material = armor?.armorStyle || 'cloth',
-    accent = armor?.accentColor || '#81714f',
-    weaponStyle = weapon?.weaponStyle || 'none';
-  const hair = { dark: '#31261e', fair: '#b19b62', red: '#8e4d2c' }[look.hair];
+  const look = player?.appearance ?? appearance;
+  const armor = player ? equippedItem(player, 'armor') : null;
+  const weapon = player ? equippedItem(player, 'weapon') : null;
+  const trinket = player ? equippedItem(player, 'trinket') : null;
+  const material = armor?.armorStyle ?? 'cloth';
+  const outfit = OUTFITS[look.gender][material];
+  const bodyPosition = anchoredPosition(outfit.box, outfit.neck, NECK, BODY_SCALE);
+  const grip: Point = [
+    NECK[0] + (outfit.grip[0] - outfit.neck[0]) * BODY_SCALE,
+    NECK[1] + (outfit.grip[1] - outfit.neck[1]) * BODY_SCALE,
+  ];
+  const headColumn =
+    HEAD_COLUMNS[(look.gender === 'female' ? 2 : 0) + (look.hairStyle === 'braid' ? 1 : 0)]!;
+  const headRow = HEAD_ROWS[look.hair];
+  const headBox: Box = [headColumn.x, headRow.y, headColumn.width, headRow.height];
+  const headScale = look.gender === 'female' ? 0.194 : 0.2;
+  const headPosition = anchoredPosition(
+    headBox,
+    [headColumn.neckX, headRow.neckY],
+    NECK,
+    headScale,
+  );
+  const headFile = `/art/characters/heads-${look.skin}${look.mark === 'scar' ? '-scar' : ''}.webp`;
+  const weaponStyle = weapon?.weaponStyle ?? 'none';
+  const weaponArt =
+    weaponStyle === 'none' ? null : WEAPONS[weapon?.id === 'thunder-axe' ? 'thunder' : weaponStyle];
+  const sourceGrip: Point | null = weaponArt
+    ? weaponArt.rotate
+      ? [
+          weaponArt.box[0] + weaponArt.box[2] - (weaponArt.grip[0] - weaponArt.box[0]),
+          weaponArt.box[1] + weaponArt.box[3] - (weaponArt.grip[1] - weaponArt.box[1]),
+        ]
+      : weaponArt.grip
+    : null;
+  const trinketBox: Box =
+    trinket?.id === 'wolf-fang' ? [617, 562, 294, 435] : [1090, 560, 284, 432];
   return (
-    <svg
+    <div
       data-testid="character-avatar"
       data-gender={look.gender}
       data-armor={material}
       data-weapon={weaponStyle}
-      className={`character-sprite ${className}`}
-      viewBox="0 0 220 280"
+      data-weapon-id={weapon?.id ?? 'none'}
+      data-hair={look.hair}
+      data-hairstyle={look.hairStyle}
+      data-skin={look.skin}
+      data-mark={look.mark}
+      data-renderer="painted-atlas"
+      className={`character-sprite ${portrait ? 'is-portrait' : ''} ${className}`}
       role="img"
-      aria-label={`${female ? 'Ратница' : 'Ратник'}: ${material === 'chain' ? 'кольчуга' : material === 'leather' ? 'кожаный доспех' : 'льняная рубаха'}, ${weaponStyle === 'axe' ? 'топор' : weaponStyle === 'sword' ? 'меч' : weaponStyle === 'mace' ? 'булава' : 'без оружия'}`}
+      aria-label={`${look.gender === 'female' ? 'Ратница' : 'Ратник'}: ${armor?.name ?? 'льняная рубаха'}, ${weapon?.name ?? 'без оружия'}`}
     >
-      <defs>
-        <clipPath id={`body-${id}`}>
-          <rect x="35" y="0" width="153" height="280" />
-        </clipPath>
-        <pattern id={`chain-${id}`} patternUnits="userSpaceOnUse" width="4" height="3">
-          <rect width="4" height="3" fill="#737b70" />
-          <path d="M0 1Q1 3 2 1M2 0Q3 2 4 0" fill="none" stroke="#343f37" strokeWidth=".8" />
-        </pattern>
-        <linearGradient id={`steel-${id}`}>
-          <stop stopColor="#566658" />
-          <stop offset=".4" stopColor="#c3c3a9" />
-          <stop offset="1" stopColor="#5b695a" />
-        </linearGradient>
-        <filter id={`skin-${id}`}>
-          <feColorMatrix type="matrix" values=".84 0 0 0 0 0 .76 0 0 0 0 0 .69 0 0 0 0 0 1 0" />
-        </filter>
-      </defs>
-      <ellipse cx="108" cy="271" rx="58" ry="7" fill="#030705" opacity=".45" />
-      <image
-        href="/art/slavic-heroes.png"
-        x={female ? -174 : -27}
-        y="0"
-        width="420"
-        height="280"
-        preserveAspectRatio="none"
-        clipPath={`url(#body-${id})`}
-        filter={look.skin === 'tan' ? `url(#skin-${id})` : undefined}
-      />
-      <path
-        d={
-          female
-            ? 'M97 19Q98 9 112 9Q132 11 137 23L134 27 125 15 108 15 101 26Z'
-            : 'M95 17L102 6 123 4 135 15 131 18 122 10 105 14 98 22Z'
-        }
-        fill={hair}
-        opacity=".83"
-      />
-      {look.hairStyle === 'braid' && (
-        <>
-          <path
-            d={female ? 'M97 24Q88 42 98 67L97 88' : 'M131 18Q140 36 136 55L141 75'}
-            stroke={hair}
-            strokeWidth="7"
-            fill="none"
+      <span className="character-art">
+        {weaponArt && sourceGrip && (
+          <AtlasPart
+            file="/art/characters/equipment.webp"
+            box={weaponArt.box}
+            position={anchoredPosition(weaponArt.box, sourceGrip, grip, weaponArt.scale)}
+            size={[weaponArt.box[2] * weaponArt.scale, weaponArt.box[3] * weaponArt.scale]}
+            rotate={weaponArt.rotate}
+            className={`sprite-weapon ${weapon?.id === 'thunder-axe' ? 'is-thunder' : ''}`}
+            testId="weapon-layer"
           />
-          <path
-            d={
-              female
-                ? 'M97 30L92 36 99 43 94 50 101 58 95 65 99 73'
-                : 'M135 28L141 34 135 41 141 48 136 56 141 63'
-            }
-            fill="none"
-            stroke="#b79258"
-            strokeWidth="1"
-            opacity=".6"
+        )}
+        <AtlasPart
+          file={headFile}
+          box={headBox}
+          position={headPosition}
+          size={[headBox[2] * headScale, headBox[3] * headScale]}
+          className="character-head"
+          testId="head-layer"
+        />
+        <AtlasPart
+          file="/art/characters/outfits.webp"
+          box={outfit.box}
+          position={bodyPosition}
+          size={[outfit.box[2] * BODY_SCALE, outfit.box[3] * BODY_SCALE]}
+          className="character-body"
+          testId="armor-layer"
+        />
+        {trinket && (
+          <AtlasPart
+            file="/art/characters/equipment.webp"
+            box={trinketBox}
+            position={[107, 69]}
+            size={[24, 35]}
+            className="character-trinket"
+            testId="trinket-layer"
           />
-        </>
-      )}
-      {look.mark === 'scar' && (
-        <path d={female ? 'M123 25L119 34' : 'M122 22L119 34'} stroke="#9a5843" strokeWidth="1.6" />
-      )}
-      {armor && (
-        <g data-testid="armor-layer" key={armor.id}>
-          {material === 'chain' ? (
-            <>
-              <path
-                d={
-                  female
-                    ? 'M90 57L103 59 111 72 123 55 136 65 142 106 146 139Q112 148 78 139L85 97 81 71Z'
-                    : 'M89 51L104 56 110 65 121 51 141 65 148 97 139 114 146 142 76 141 83 111 73 96 81 69Z'
-                }
-                fill={`url(#chain-${id})`}
-                stroke="#434d41"
-                strokeWidth="2"
-              />
-              <path
-                d="M84 109L140 108 140 115 83 117Z"
-                fill="#47352a"
-                stroke="#ad8a50"
-                strokeWidth="1.5"
-              />
-              <path
-                d="M91 58L91 103M130 60L130 104"
-                stroke="#bcc0a1"
-                strokeWidth="1"
-                opacity=".3"
-              />
-            </>
-          ) : material === 'leather' ? (
-            <>
-              <path
-                d={
-                  female
-                    ? 'M88 61L100 59 112 72 126 59 139 69 131 105 141 139 81 139 90 103 81 73Z'
-                    : 'M88 57L101 57 109 70 123 54 139 64 136 109 142 140 78 140 85 109 81 67Z'
-                }
-                fill="#5b3e2b"
-                stroke="#b28d58"
-                strokeWidth="1.5"
-              />
-              <path
-                d="M93 73L126 73 131 104 88 104Z"
-                fill="#7c5236"
-                stroke="#ba965c"
-                strokeWidth="1"
-              />
-              <path
-                d="M90 90L127 90M98 74L98 103M116 74L116 103"
-                stroke="#5a3d28"
-                strokeWidth="1.2"
-              />
-              <path d="M84 110L135 108" stroke="#362b22" strokeWidth="5" />
-            </>
-          ) : (
-            <path
-              d="M85 66L98 64 109 77 124 60 136 70 131 109 141 139 82 139 90 107Z"
-              fill={accent}
-              opacity=".3"
-            />
-          )}
-          <rect
-            x="106"
-            y="108"
-            width="9"
-            height="7"
-            fill="#9e8050"
-            stroke="#4a3c28"
-            strokeWidth="1.5"
-          />
-        </g>
-      )}
-      {trinket && (
-        <g data-testid="trinket-layer">
-          <path d="M101 51Q109 70 123 52" fill="none" stroke="#b79858" strokeWidth="1.3" />
-          <path
-            d="M109 64L115 68 114 75 108 78 104 72Z"
-            fill={trinket.accentColor || '#b79858'}
-            stroke="#6d572f"
-            strokeWidth="1.4"
-          />
-        </g>
-      )}
-      {weapon && (
-        <g className="sprite-weapon" data-testid="weapon-layer" transform="rotate(-13 168 150)">
-          <path d="M172 68L170 204" stroke="#342a20" strokeWidth="5" strokeLinecap="round" />
-          <path d="M171 71L169 201" stroke="#a47b4b" strokeWidth="1.6" />
-          <path d="M171 137L171 160" stroke={weapon.accentColor} strokeWidth="6" />
-          {weapon.rarity === 'epic' && (
-            <path
-              d="M173 72L179 86 171 89 184 101"
-              fill="none"
-              stroke={weapon.accentColor}
-              strokeWidth="2.4"
-            />
-          )}
-          {weaponStyle === 'axe' ? (
-            <path
-              d="M171 69L180 63Q201 78 192 102L174 94 167 96 165 72Z"
-              fill={`url(#steel-${id})`}
-              stroke="#3c4c3e"
-              strokeWidth="2"
-            />
-          ) : weaponStyle === 'sword' ? (
-            <>
-              <path
-                d="M168 130L167 25 174 10 179 26 175 130Z"
-                fill={`url(#steel-${id})`}
-                stroke="#344537"
-                strokeWidth="1.5"
-              />
-              <path d="M158 132L183 132" stroke="#9e8250" strokeWidth="5" />
-              <circle cx="171" cy="171" r="3.5" fill="#ae9055" />
-            </>
-          ) : (
-            <>
-              <path d="M171 69L170 53" stroke="#88907a" strokeWidth="6" />
-              <path
-                d="M158 64L153 51 159 38 166 41 170 30 178 41 187 39 192 55 183 68Z"
-                fill={`url(#steel-${id})`}
-                stroke="#3c4c3e"
-                strokeWidth="2"
-              />
-            </>
-          )}
-        </g>
-      )}
-    </svg>
+        )}
+      </span>
+    </div>
   );
 }
+
 export function EnemySprite({ mobId, className = '' }: { mobId: string; className?: string }) {
-  const id = useId().replace(/:/g, '');
+  const box: Box =
+    mobId === 'wolf'
+      ? [0, 285, 596, 689]
+      : mobId === 'kobold'
+        ? [520, 0, 530, 1024]
+        : [1070, 0, 466, 1024];
+  const scale = mobId === 'wolf' ? 0.32 : 0.267;
+  const width = box[2] * scale;
+  const height = box[3] * scale;
   return (
-    <svg
+    <div
       className={`enemy-sprite ${className}`}
-      viewBox="0 0 220 280"
+      data-mob={mobId}
+      data-renderer="painted-atlas"
       role="img"
       aria-label={
-        mobId === 'wolf' ? 'Лютый волк' : mobId === 'kobold' ? 'Леший' : 'Болотный налётчик'
+        mobId === 'wolf'
+          ? 'Лесной волк'
+          : mobId === 'kobold'
+            ? 'Трухлявый страж'
+            : 'Болотный лиходей'
       }
     >
-      <defs>
-        <clipPath id={`foe-${id}`}>
-          <rect
-            x={mobId === 'wolf' ? 15 : mobId === 'kobold' ? 25 : 20}
-            y={mobId === 'wolf' ? 75 : 0}
-            width={mobId === 'wolf' ? 160 : mobId === 'kobold' ? 140 : 180}
-            height={mobId === 'wolf' ? 205 : 280}
-          />
-        </clipPath>
-      </defs>
-      <ellipse cx="110" cy="269" rx="76" ry="7" fill="#030705" opacity=".5" />
-      <image
-        href="/art/slavic-enemies.png"
-        x={mobId === 'wolf' ? 0 : mobId === 'kobold' ? -128 : -284}
-        y="0"
-        width="420"
-        height="280"
-        preserveAspectRatio="none"
-        clipPath={`url(#foe-${id})`}
-      />
-    </svg>
+      <span className="enemy-art">
+        <AtlasPart
+          file="/art/slavic-enemies.webp"
+          box={box}
+          position={[(FRAME_WIDTH - width) / 2, FRAME_HEIGHT - height]}
+          size={[width, height]}
+        />
+      </span>
+    </div>
   );
 }

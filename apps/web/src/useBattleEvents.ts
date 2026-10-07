@@ -1,53 +1,33 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CombatEvent, LootEvent, PublicPlayerState } from '@azeroth/game';
-export function useBattleEvents(player: PublicPlayerState | null) {
+import { BattleTimeline } from './battleTimeline';
+
+export function useBattleEvents(player: PublicPlayerState | null, active = true) {
   const [combat, setCombat] = useState<CombatEvent | null>(null);
   const [loot, setLoot] = useState<LootEvent | null>(null);
-  const cursor = useRef<{ player: string; combat: number; loot: number } | null>(null);
-  const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
-  const cancelTimers = () => {
-    timers.current.forEach(clearTimeout);
-    timers.current.clear();
-  };
-  const later = (callback: () => void, delay: number) => {
-    const timer = setTimeout(() => {
-      timers.current.delete(timer);
-      callback();
-    }, delay);
-    timers.current.add(timer);
-  };
+  const timeline = useRef<BattleTimeline | null>(null);
+  const latestPlayer = useRef(player);
+  const latestActive = useRef(active);
+  latestPlayer.current = player;
+  latestActive.current = active;
+
   useEffect(() => {
-    if (!player) {
-      cancelTimers();
-      cursor.current = null;
-      setCombat(null);
-      setLoot(null);
-      return;
-    }
-    const combatEvents = player.combatEvents || [],
-      lootEvents = player.lootEvents || [];
-    const maxCombat = Math.max(0, ...combatEvents.map((e) => e.id)),
-      maxLoot = Math.max(0, ...lootEvents.map((e) => e.id));
-    if (cursor.current?.player !== player.id) {
-      cancelTimers();
-      cursor.current = { player: player.id, combat: maxCombat, loot: maxLoot };
-      setCombat(null);
-      setLoot(null);
-      return;
-    }
-    const incoming = combatEvents
-      .filter((e) => e.id > cursor.current!.combat)
-      .sort((a, b) => a.id - b.id);
-    incoming.slice(-5).forEach((event, index) =>
-      later(() => {
-        setCombat(event);
-        later(() => setCombat((current) => (current?.id === event.id ? null : current)), 1100);
-      }, index * 360),
-    );
-    const drops = lootEvents.filter((e) => e.id > cursor.current!.loot && !e.salvaged);
-    if (drops.length) setLoot(drops[drops.length - 1]);
-    cursor.current = { player: player.id, combat: maxCombat, loot: maxLoot };
-  }, [player]);
-  useEffect(() => () => cancelTimers(), []);
-  return { combat, loot, dismissLoot: () => setLoot(null) };
+    const current = new BattleTimeline(setCombat, setLoot);
+    timeline.current = current;
+    current.setVisible(!document.hidden);
+    current.setActive(latestActive.current);
+    current.synchronize(latestPlayer.current);
+    const onVisibility = () => current.setVisible(!document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      current.dispose();
+      timeline.current = null;
+    };
+  }, []);
+
+  useEffect(() => timeline.current?.synchronize(player), [player]);
+  useEffect(() => timeline.current?.setActive(active), [active]);
+  const dismissLoot = useCallback(() => timeline.current?.dismissLoot(), []);
+  return { combat, loot, dismissLoot };
 }

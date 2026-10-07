@@ -1,5 +1,6 @@
-import { Coins, Shield, Sword, Gem } from 'lucide-react';
+import { Coins } from 'lucide-react';
 import type { ItemDefinition } from '@azeroth/game';
+import { ItemArt } from './ItemArt';
 export const slotNames = { weapon: 'Оружие', armor: 'Доспех', trinket: 'Оберег' };
 export const rarityNames = {
   common: 'Обычный',
@@ -55,12 +56,7 @@ export function Money({ copper }: { copper: number }) {
   );
 }
 export function ItemSymbol({ item }: { item: ItemDefinition }) {
-  const Icon = item.slot === 'weapon' ? Sword : item.slot === 'armor' ? Shield : Gem;
-  return (
-    <span className={`item-symbol rarity-${item.rarity}`}>
-      <Icon strokeWidth={1.4} size={23} />
-    </span>
-  );
+  return <ItemArt item={item} className={`item-symbol rarity-${item.rarity}`} />;
 }
 export function StatText({ item }: { item: ItemDefinition }) {
   const labels: Record<string, string> = {
