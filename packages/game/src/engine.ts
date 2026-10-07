@@ -7,6 +7,11 @@ import {
   MAX_LOG_ENTRIES,
   MAX_OFFLINE_MS,
   TICK_MS,
+  COMBAT_RULES,
+  MAX_RECENT_EVENTS,
+  SKILL_BY_ID,
+  STATE_SCHEMA_VERSION,
+  WORLD,
 } from './content.js';
 import type {
   Encounter,
@@ -16,8 +21,12 @@ import type {
   PlayerState,
   RandomSource,
   Stats,
+  Appearance,
+  CombatEvent,
+  SkillState,
 } from './types.js';
-import { GameError, parseAction } from './validation.js';
+import { GameError, parseAction, parseAppearance } from './validation.js';
+import { createDefaultSkills, migratePlayerState } from './migration.js';
 
 export function xpForNextLevel(level: number): number {
   return level >= MAX_LEVEL ? 0 : 60 + (level - 1) * 40;
@@ -38,7 +47,9 @@ export function getDerivedStats(
     maxHp: 30 + (player.level - 1) * 12,
     maxMana: 30 + (player.level - 1) * 5,
     attack: 4 + (player.level - 1) * 2,
-    armor: Math.floor((player.level - 1) / 2),
+    armor: (player.level - 1) * 10,
+    critChance: COMBAT_RULES.baseCritChance,
+    hitChance: COMBAT_RULES.baseHitChance,
   };
   for (const instanceId of Object.values(player.equipment)) {
     const instance = player.inventory.find((item) => item.instanceId === instanceId);
@@ -46,6 +57,8 @@ export function getDerivedStats(
       for (const [key, value] of Object.entries(ITEM_BY_ID[instance.itemId].stats))
         stats[key as keyof Stats] += value;
   }
+  stats.critChance = Math.min(0.5, stats.critChance);
+  stats.hitChance = Math.min(0.99, stats.hitChance);
   return stats;
 }
 
@@ -63,11 +76,13 @@ export function createPlayer({
   name,
   now = Date.now(),
   rngSeed,
+  appearance,
 }: {
   id: string;
   name: string;
   now?: number;
   rngSeed?: number;
+  appearance?: Appearance;
 }): PlayerState {
   validTime(now);
   const trimmed = name.trim();
@@ -82,12 +97,17 @@ export function createPlayer({
     throw new GameError('INVALID_SEED', 'Некорректное начальное значение генератора.');
   const seed = rngSeed ?? crypto.getRandomValues(new Uint32Array(1))[0];
   const player: PlayerState = {
-    schemaVersion: 1,
+    schemaVersion: STATE_SCHEMA_VERSION,
     id,
     name: trimmed,
-    race: 'Human',
-    class: 'Paladin',
-    zone: 'Northshire Abbey',
+    race: 'Человек',
+    class: 'Ратник',
+    zone: WORLD.zone,
+    appearance: parseAppearance(appearance),
+    skills: createDefaultSkills(),
+    combatEvents: [],
+    lootEvents: [],
+    nextEventId: 1,
     level: 1,
     xp: 0,
     hp: 34,
@@ -117,7 +137,7 @@ export function createPlayer({
     player,
     now,
     'system',
-    'Добро пожаловать в аббатство Североземья. Маршал Макбрайд ждёт вашей помощи.',
+    'Добро пожаловать в Берёзовый Брод. Дарёна-травница ждёт вашей помощи у костра.',
   );
   return player;
 }
@@ -140,10 +160,55 @@ function randomFor(player: PlayerState, injected?: RandomSource): RandomSource {
     return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
   };
 }
-function damage(attack: number, armor: number, random: RandomSource): number {
-  return Math.max(1, Math.round(attack * (0.85 + random() * 0.3)) - armor);
+export function armorMitigation(armor: number, attackerLevel: number): number {
+  return (
+    Math.max(0, armor) /
+    (Math.max(0, armor) + COMBAT_RULES.armorBase + COMBAT_RULES.armorPerLevel * attackerLevel)
+  );
 }
-
+function physicalHit(
+  attack: number,
+  armor: number,
+  attackerLevel: number,
+  defenderLevel: number,
+  critChance: number,
+  hitChance: number,
+  random: RandomSource,
+  multiplier = 1,
+): { damage: number; critical: boolean; missed: boolean } {
+  const roll = () => {
+    const value = random();
+    if (!Number.isFinite(value) || value < 0 || value >= 1)
+      throw new GameError(
+        'INVALID_RNG',
+        'Значения генератора случайных чисел должны быть в диапазоне [0, 1).',
+      );
+    return value;
+  };
+  const chance = Math.max(
+    0.5,
+    hitChance - Math.max(0, defenderLevel - attackerLevel) * COMBAT_RULES.hitPenaltyPerLevel,
+  );
+  if (roll() >= chance) return { damage: 0, critical: false, missed: true };
+  const critical = roll() < critChance;
+  const varied =
+    attack * (0.85 + roll() * 0.3) * multiplier * (critical ? COMBAT_RULES.criticalMultiplier : 1);
+  return {
+    damage: Math.max(1, Math.round(varied * (1 - armorMitigation(armor, attackerLevel)))),
+    critical,
+    missed: false,
+  };
+}
+export function advanceSkillCooldowns(skills: SkillState, turns = 1): SkillState {
+  return {
+    loadout: [...skills.loadout],
+    cooldowns: {
+      heavyStrike: Math.max(0, skills.cooldowns.heavyStrike - turns),
+      ward: Math.max(0, skills.cooldowns.ward - turns),
+      mend: Math.max(0, skills.cooldowns.mend - turns),
+    },
+  };
+}
 export interface BattleTurnResult {
   hp: number;
   mana: number;
@@ -151,35 +216,112 @@ export interface BattleTurnResult {
   won: boolean;
   died: boolean;
   events: string[];
+  combatEvents: Omit<CombatEvent, 'id' | 'timestamp'>[];
+  skills: SkillState;
 }
-/** A single player-first turn. Lethal player attacks prevent retaliation. */
+/** Player-first physical turn with independent hit, critical and weapon-variance rolls. */
 export function resolveBattleTurn(
-  character: { hp: number; mana: number; level: number; stats: Stats },
+  character: { hp: number; mana: number; level: number; stats: Stats; skills?: SkillState },
   encounter: Encounter,
   random: RandomSource,
 ): BattleTurnResult {
   const mob = MOB_BY_ID[encounter.mobId];
   let hp = character.hp,
     mana = Math.min(character.stats.maxMana, character.mana + 1);
+  const skills = advanceSkillCooldowns(character.skills ?? createDefaultSkills());
   const next = { ...encounter, round: encounter.round + 1 },
-    events: string[] = [];
-  if (hp <= character.stats.maxHp * 0.35 && mana >= 10) {
+    events: string[] = [],
+    combatEvents: BattleTurnResult['combatEvents'] = [];
+  const event = (
+    kind: CombatEvent['kind'],
+    source: CombatEvent['source'],
+    target: CombatEvent['target'],
+    values: Partial<
+      Omit<CombatEvent, 'id' | 'timestamp' | 'kind' | 'source' | 'target' | 'mobId'>
+    > = {},
+  ) => {
+    combatEvents.push({
+      kind,
+      source,
+      target,
+      mobId: mob.id,
+      damage: 0,
+      healing: 0,
+      critical: false,
+      missed: false,
+      ability: null,
+      ...values,
+    });
+  };
+  const ready = skills.loadout.filter((id) => {
+    const skill = SKILL_BY_ID[id];
+    return (
+      skill.requiredLevel <= character.level && skills.cooldowns[id] === 0 && mana >= skill.manaCost
+    );
+  });
+  // A configured survival skill takes priority over attacks at its health threshold.
+  const mend =
+    ready.includes('mend') && hp <= character.stats.maxHp * SKILL_BY_ID.mend.healthBelow!;
+  const selected = mend ? 'mend' : ready.find((id) => SKILL_BY_ID[id].policy === 'onCooldown');
+  if (selected) {
+    mana -= SKILL_BY_ID[selected].manaCost;
+    skills.cooldowns[selected] = SKILL_BY_ID[selected].cooldownTurns;
+  }
+  if (selected === 'mend') {
     const healed = Math.min(character.stats.maxHp - hp, 12 + character.level * 3);
     hp += healed;
-    mana -= 10;
-    events.push(`Свет небес восстанавливает ${healed} здоровья.`);
+    events.push(`Живая вода восстанавливает ${healed} здоровья.`);
+    event('heal', 'player', 'player', { healing: healed, ability: 'mend' });
   } else {
-    const dealt = damage(character.stats.attack, mob.armor, random);
-    next.hp = Math.max(0, next.hp - dealt);
-    events.push(`Вы наносите ${dealt} урона противнику «${mob.name}».`);
+    if (selected === 'ward') {
+      events.push('Оберег ослабляет следующую вражескую атаку.');
+      event('ward', 'player', 'player', { ability: 'ward' });
+    }
+    const hit = physicalHit(
+      character.stats.attack,
+      mob.armor,
+      character.level,
+      mob.level,
+      character.stats.critChance,
+      character.stats.hitChance,
+      random,
+      selected === 'heavyStrike' ? COMBAT_RULES.heavyStrikeMultiplier : 1,
+    );
+    next.hp = Math.max(0, next.hp - hit.damage);
+    const ability = selected === 'heavyStrike' ? 'heavyStrike' : 'basicAttack';
+    events.push(
+      hit.missed
+        ? `Ваш удар по противнику «${mob.name}» не достиг цели.`
+        : `${selected === 'heavyStrike' ? 'Тяжёлый удар' : 'Вы'}: ${hit.damage} урона противнику «${mob.name}»${hit.critical ? ' — критический удар' : ''}.`,
+    );
+    event('attack', 'player', 'enemy', { ...hit, ability });
   }
   const won = next.hp === 0;
   if (!won) {
-    const received = damage(mob.attack, character.stats.armor, random);
+    const hit = physicalHit(
+      mob.attack,
+      character.stats.armor,
+      mob.level,
+      character.level,
+      COMBAT_RULES.baseCritChance,
+      COMBAT_RULES.baseHitChance,
+      random,
+    );
+    const received =
+      selected === 'ward' && !hit.missed
+        ? Math.max(1, Math.round(hit.damage * (1 - COMBAT_RULES.wardReduction)))
+        : hit.damage;
     hp = Math.max(0, hp - received);
-    events.push(`${mob.name} наносит вам ${received} урона.`);
+    events.push(
+      hit.missed
+        ? `${mob.name} промахивается.`
+        : `${mob.name} наносит вам ${received} урона${hit.critical ? ' — критический удар' : ''}.`,
+    );
+    event('attack', 'enemy', 'player', { ...hit, damage: received, ability: 'basicAttack' });
   }
-  return { hp, mana, encounter: next, won, died: hp === 0, events };
+  if (won) event('victory', 'player', 'enemy');
+  if (hp === 0) event('defeat', 'enemy', 'player');
+  return { hp, mana, encounter: next, won, died: hp === 0, events, combatEvents, skills };
 }
 
 function grantXp(player: PlayerState, amount: number, at: number): void {
@@ -195,8 +337,26 @@ function grantXp(player: PlayerState, amount: number, at: number): void {
   }
   if (player.level === MAX_LEVEL) player.xp = 0;
 }
-function addItem(player: PlayerState, itemId: ItemId, at: number): boolean {
-  if (player.inventory.length >= MAX_INVENTORY) {
+function addItem(
+  player: PlayerState,
+  itemId: ItemId,
+  at: number,
+  source: 'drop' | 'quest' = 'drop',
+): boolean {
+  const full = player.inventory.length >= MAX_INVENTORY;
+  const instanceId = full ? null : `${player.id}:${player.nextItemId++}`;
+  player.lootEvents.push({
+    id: player.nextEventId++,
+    timestamp: at,
+    itemId,
+    instanceId,
+    source,
+    rarity: ITEM_BY_ID[itemId].rarity,
+    salvaged: full,
+  });
+  if (player.lootEvents.length > MAX_RECENT_EVENTS)
+    player.lootEvents.splice(0, player.lootEvents.length - MAX_RECENT_EVENTS);
+  if (full) {
     player.copper += 5;
     addLog(
       player,
@@ -206,14 +366,18 @@ function addItem(player: PlayerState, itemId: ItemId, at: number): boolean {
     );
     return false;
   }
-  player.inventory.push({ instanceId: `${player.id}:${player.nextItemId++}`, itemId });
+  player.inventory.push({ instanceId: instanceId!, itemId });
   addLog(player, at, 'loot', `Получен предмет «${ITEM_BY_ID[itemId].name}».`);
   return true;
 }
 function tick(player: PlayerState, at: number, random: RandomSource, report: OfflineReport): void {
   const stats = getDerivedStats(player);
-  if (player.mode === 'idle') return;
+  if (player.mode === 'idle') {
+    player.skills = advanceSkillCooldowns(player.skills);
+    return;
+  }
   if (player.mode === 'resting') {
+    player.skills = advanceSkillCooldowns(player.skills);
     player.hp = Math.min(stats.maxHp, player.hp + Math.ceil(stats.maxHp * 0.15));
     player.mana = Math.min(stats.maxMana, player.mana + Math.ceil(stats.maxMana * 0.15));
     if (player.hp === stats.maxHp && player.mana === stats.maxMana) {
@@ -236,13 +400,18 @@ function tick(player: PlayerState, at: number, random: RandomSource, report: Off
   const mob = MOB_BY_ID[player.targetMobId];
   player.encounter ??= { mobId: mob.id, hp: mob.hp, maxHp: mob.hp, round: 0 };
   const result = resolveBattleTurn(
-    { hp: player.hp, mana: player.mana, level: player.level, stats },
+    { hp: player.hp, mana: player.mana, level: player.level, stats, skills: player.skills },
     player.encounter,
     random,
   );
   player.hp = result.hp;
   player.mana = result.mana;
   player.encounter = result.encounter;
+  player.skills = result.skills;
+  for (const event of result.combatEvents)
+    player.combatEvents.push({ ...event, id: player.nextEventId++, timestamp: at });
+  if (player.combatEvents.length > MAX_RECENT_EVENTS)
+    player.combatEvents.splice(0, player.combatEvents.length - MAX_RECENT_EVENTS);
   for (const event of result.events) addLog(player, at, 'combat', event);
   if (result.died) {
     player.totalDeaths++;
@@ -253,7 +422,7 @@ function tick(player: PlayerState, at: number, random: RandomSource, report: Off
       player,
       at,
       'system',
-      'Вы повержены. Восстанавливаетесь в аббатстве, после чего охота продолжится.',
+      'Вы повержены. Восстанавливаетесь у костра в Берёзовом Броду, после чего охота продолжится.',
     );
     return;
   }
@@ -297,17 +466,12 @@ function tick(player: PlayerState, at: number, random: RandomSource, report: Off
 
 /** Advance using server time. Missed time beyond eight hours is discarded, never queued. */
 export function advancePlayer(
-  original: PlayerState,
+  original: unknown,
   now: number,
   injected?: RandomSource,
 ): PlayerState {
-  if (original.schemaVersion !== 1)
-    throw new GameError(
-      'STATE_VERSION_UNSUPPORTED',
-      'Версия сохранения не поддерживается. Необходима миграция состояния.',
-    );
   validTime(now);
-  const player = structuredClone(original);
+  const player = migratePlayerState(original);
   if (now <= player.lastAdvancedAt) return player;
   const elapsedMs = now - player.lastAdvancedAt,
     simulatedMs = Math.min(elapsedMs, MAX_OFFLINE_MS);
@@ -326,8 +490,11 @@ export function advancePlayer(
   const random = randomFor(player, injected);
   // Idle characters need no iteration, preserving the tick phase without a catch-up backlog.
   if (player.mode === 'idle') {
-    if (player.nextTickAt <= now)
-      player.nextTickAt += (Math.floor((now - player.nextTickAt) / TICK_MS) + 1) * TICK_MS;
+    if (player.nextTickAt <= now) {
+      const turns = Math.floor((now - player.nextTickAt) / TICK_MS) + 1;
+      player.skills = advanceSkillCooldowns(player.skills, turns);
+      player.nextTickAt += turns * TICK_MS;
+    }
   } else {
     while (player.nextTickAt <= now) {
       tick(player, player.nextTickAt, random, report);
@@ -371,7 +538,7 @@ export function applyAction(
       player.mode = 'resting';
       player.targetMobId = null;
       player.encounter = null;
-      addLog(player, now, 'system', 'Отдых в аббатстве Североземья.');
+      addLog(player, now, 'system', 'Отдых у костра в Берёзовом Броду.');
       break;
     case 'acceptQuest': {
       const quest = QUEST_BY_ID[action.questId];
@@ -398,7 +565,7 @@ export function applyAction(
       progress.status = 'completed';
       player.copper += quest.rewards.copper;
       grantXp(player, quest.rewards.xp, now);
-      if (quest.rewards.itemId) addItem(player, quest.rewards.itemId, now);
+      if (quest.rewards.itemId) addItem(player, quest.rewards.itemId, now, 'quest');
       addLog(
         player,
         now,
@@ -423,6 +590,21 @@ export function applyAction(
     case 'unequip':
       player.equipment[action.slot] = null;
       break;
+    case 'setSkills': {
+      if (action.skills.some((id) => player.level < SKILL_BY_ID[id].requiredLevel))
+        throw new GameError(
+          'LEVEL_REQUIRED',
+          'Одно из выбранных умений пока недоступно по уровню.',
+        );
+      player.skills.loadout = [...action.skills];
+      addLog(
+        player,
+        now,
+        'system',
+        `Умения для охоты: ${action.skills.map((id) => SKILL_BY_ID[id].name).join(', ') || 'только обычные удары'}.`,
+      );
+      break;
+    }
   }
   const stats = getDerivedStats(player);
   player.hp = Math.min(player.hp, stats.maxHp);

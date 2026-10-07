@@ -89,14 +89,14 @@ describe('battle turns', () => {
     expect(result.hp).toBe(player.hp);
     expect(result.encounter.round).toBe(1);
   });
-  it('casts Holy Light below 35% health and spends mana before enemy retaliation', () => {
+  it('uses Living Water below 35% health and spends mana before enemy retaliation', () => {
     const player = makePlayer();
     const result = resolveBattleTurn(
       { ...player, hp: 5, mana: 10, stats: getDerivedStats(player) },
       { mobId: 'wolf', hp: 22, maxHp: 22, round: 0 },
       () => 0.5,
     );
-    expect(result.hp).toBe(17);
+    expect(result.hp).toBe(16);
     expect(result.mana).toBe(1);
     expect(result.encounter.hp).toBe(22);
     expect(result.events[0]).toContain('15');
@@ -117,7 +117,7 @@ describe('battle turns', () => {
 
 describe('time and deterministic simulation', () => {
   it('rejects incompatible saves instead of silently interpreting a new schema', () => {
-    const incompatible = { ...makePlayer(), schemaVersion: 2 } as unknown as PlayerState;
+    const incompatible = { ...makePlayer(), schemaVersion: 3 } as unknown as PlayerState;
     expect(() => advancePlayer(incompatible, TICK_MS)).toThrowError(
       expect.objectContaining({ code: 'STATE_VERSION_UNSUPPORTED' }),
     );
@@ -209,16 +209,16 @@ describe('quest and equipment progression', () => {
       });
     const next = advancePlayer(player, 60_000, () => 0);
     expect(next.inventory).toHaveLength(MAX_INVENTORY);
-    expect(next.copper).toBe(next.totalKills * 9);
+    expect(next.copper).toBe(next.totalKills * 14);
     expect(next.log.some((entry) => entry.message.includes('Сумка полна'))).toBe(true);
   });
   it('respects both loot probability extremes with a controlled RNG', () => {
     const original = huntingPlayer();
     const guaranteedDrops = advancePlayer(original, 60_000, () => 0);
-    const noDrops = advancePlayer(original, 60_000, () => 0.999999);
+    const noDrops = advancePlayer(original, 60_000, () => 0.5);
     expect(guaranteedDrops.totalKills).toBeGreaterThan(0);
     expect(guaranteedDrops.inventory).toHaveLength(
-      original.inventory.length + guaranteedDrops.totalKills,
+      original.inventory.length + guaranteedDrops.totalKills * 2,
     );
     expect(noDrops.totalKills).toBeGreaterThan(0);
     expect(noDrops.inventory).toEqual(original.inventory);

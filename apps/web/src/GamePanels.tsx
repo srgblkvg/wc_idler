@@ -1,493 +1,740 @@
+import { useState } from 'react';
 import {
-  BookOpen,
+  ArrowRight,
   Check,
-  ChevronRight,
   CirclePause,
+  Flame,
   Heart,
+  MapPin,
   ScrollText,
   Shield,
-  Skull,
-  Sparkles,
   Sword,
-  Swords,
   Trees,
-  Trophy,
+  X,
 } from 'lucide-react';
 import {
   ITEM_BY_ID,
   MOBS,
   MOB_BY_ID,
   QUESTS,
+  SKILLS,
+  SKILL_BY_ID,
   getDerivedStats,
-  xpForNextLevel,
+  type CombatEvent,
   type GameAction,
+  type LootEvent,
   type PublicPlayerState,
+  type SkillId,
 } from '@azeroth/game';
-import { Cross, ItemSymbol, Meter, Money, PanelTitle, slotNames, StatText } from './Common';
-
-type Props = {
+import { ItemSymbol, Meter, Money, RarityLegend, rarityNames, slotNames, StatText } from './Common';
+import { CharacterSprite, EnemySprite, equippedItem } from './CharacterSprite';
+export type GameProps = {
   player: PublicPlayerState;
   pending: boolean;
   act: (action: GameAction) => Promise<boolean>;
 };
-export function RegionPanel({ player, pending, act }: Props) {
+export function RegionPanel({
+  player,
+  pending,
+  act,
+  onTravel,
+}: GameProps & { onTravel?: () => void }) {
   return (
-    <section className="panel region-panel">
-      <PanelTitle icon={Trees} aside={<span className="tiny-label">01 — 05</span>}>
-        Окрестности
-      </PanelTitle>
-      <p className="panel-description">У каждой тропы — своя история.</p>
-      <div className="mob-list">
-        {MOBS.map((mob, i) => {
-          const selected = player.targetMobId === mob.id;
-          return (
-            <button
-              className={`mob-card ${selected ? 'selected' : ''}`}
-              key={mob.id}
-              onClick={() => void act({ type: 'startHunt', mobId: mob.id })}
-              disabled={pending || player.level < mob.level}
-              aria-pressed={selected}
-            >
-              <div className={`mob-seal mob-${mob.id}`}>
-                {i < 2 ? (
-                  <img
-                    src="/art/characters.png"
-                    className={i === 0 ? 'wolf-portrait' : 'kobold-portrait'}
-                    alt=""
-                  />
-                ) : (
-                  <Skull size={26} />
-                )}
-              </div>
-              <div className="mob-copy">
-                <div className="mob-line">
-                  <strong>{mob.name}</strong>
-                  <span>ур. {mob.level}</span>
-                </div>
-                <p>{player.level < mob.level ? `Доступно с ${mob.level} уровня` : mob.location}</p>
-                <div className="mob-rewards">
-                  <span>
-                    <Sparkles size={11} />
-                    {mob.xp} опыта
-                  </span>
-                  <span>
-                    <span className="copper-dot" />
-                    {mob.copper} меди
-                  </span>
-                </div>
-              </div>
-              <ChevronRight className="mob-arrow" size={15} />
-              {selected && <span className="chosen-label">ЦЕЛЬ ОХОТЫ</span>}
-            </button>
-          );
-        })}
+    <section className="region-panel view-panel">
+      <header className="panel-heading">
+        <span>БЕРЁЗОВЫЙ БРОД</span>
+        <h2>Окрестности</h2>
+      </header>
+      <div className="region-map" aria-hidden="true">
+        <svg viewBox="0 0 300 160">
+          <path
+            d="M25 142Q100 106 78 69T175 20M78 69Q139 90 239 123"
+            fill="none"
+            stroke="#a1834b"
+            strokeWidth="2"
+            strokeDasharray="4 6"
+          />
+          <path
+            d="M47 35L54 20 64 41M160 110L173 83 188 117M235 36L249 11 260 47M21 108L33 82 45 113M110 41L119 19 130 50"
+            fill="none"
+            stroke="#52684b"
+            strokeWidth="3"
+          />
+          <circle cx="78" cy="69" r="6" fill="#bc9562" />
+          <circle cx="175" cy="20" r="5" fill="#7e976c" />
+          <circle cx="239" cy="123" r="5" fill="#798f73" />
+          <text x="94" y="67">
+            Брод
+          </text>
+          <text x="191" y="25">
+            Бор
+          </text>
+          <text x="197" y="146">
+            Болото
+          </text>
+        </svg>
       </div>
-      <div className="region-note">
-        <Cross small />
-        <p>Свет хранит тех, кто оберегает эти земли.</p>
+      <div className="region-list">
+        {MOBS.map((mob) => (
+          <button
+            key={mob.id}
+            data-testid={`travel-${mob.id}`}
+            className={`region-node ${player.targetMobId === mob.id ? 'selected' : ''}`}
+            disabled={pending || player.level < mob.level}
+            onClick={async () => {
+              if (await act({ type: 'startHunt', mobId: mob.id })) onTravel?.();
+            }}
+          >
+            <span className="region-node-art">
+              <EnemySprite mobId={mob.id} />
+            </span>
+            <span className="region-node-copy">
+              <strong>{mob.location}</strong>
+              <span>
+                {mob.name} · ур. {mob.level}
+              </span>
+              <small>
+                {player.level < mob.level
+                  ? `Нужен ${mob.level} уровень`
+                  : `${mob.xp} опыта · ${mob.copper} меди`}
+              </small>
+            </span>
+            <ArrowRight size={16} />
+          </button>
+        ))}
       </div>
-      <div className="region-footer">
-        <span>ЗЕМЛИ АЛЬЯНСА</span>
-        <span className="alliance-seal">♜</span>
-      </div>
+      <button
+        className="camp-button"
+        disabled={pending || player.mode === 'resting'}
+        onClick={() => void act({ type: 'rest' })}
+      >
+        <Flame size={17} />
+        <span>
+          Вернуться к костру<small>Восстановить здоровье и силу</small>
+        </span>
+      </button>
     </section>
   );
 }
-export function BattlePanel({ player, pending, act }: Props) {
+function ForestBackdrop() {
+  return (
+    <svg
+      className="forest-drawing"
+      viewBox="0 0 900 500"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="forest-mist" x2="0" y2="1">
+          <stop stopColor="#25382d" />
+          <stop offset="1" stopColor="#4c5140" />
+        </linearGradient>
+      </defs>
+      <rect width="900" height="500" fill="url(#forest-mist)" />
+      {[50, 130, 250, 370, 520, 630, 740, 860].map((x, i) => (
+        <g key={x} opacity={i % 2 ? 0.5 : 0.25}>
+          <path d={`M${x} 0L${x + 15} 390 ${x - 12} 410 ${x - 10} 0`} fill="#161f18" />
+          <path
+            d={`M${x} 90L${x - 75} 20M${x + 2} 180L${x + 100} 100M${x} 265L${x - 70} 186`}
+            stroke="#182b1b"
+            strokeWidth="9"
+          />
+          <path d={`M${x + 10} 0L${x + 20} 405`} stroke="#849078" strokeWidth="4" />
+        </g>
+      ))}
+      <path d="M0 402Q90 365 188 398T419 406Q595 364 727 394T900 408V500H0Z" fill="#29372a" />
+      <path d="M0 457Q100 421 250 436T520 420Q715 444 900 423V500H0Z" fill="#182b20" />
+      {[38, 205, 326, 570, 701, 851].map((x) => (
+        <path
+          key={x}
+          d={`M${x} 462L${x - 20} 425M${x} 462L${x + 13} 420M${x} 448L${x + 27} 436M${x - 3} 446L${x - 31} 439`}
+          stroke="#64704b"
+          strokeWidth="3"
+          fill="none"
+        />
+      ))}
+    </svg>
+  );
+}
+export function BattlePanel({
+  player,
+  pending,
+  act,
+  combat,
+  loot,
+  dismissLoot,
+  openBag,
+}: GameProps & {
+  combat: CombatEvent | null;
+  loot: LootEvent | null;
+  dismissLoot: () => void;
+  openBag: () => void;
+}) {
   const stats = getDerivedStats(player);
   const mob = player.encounter
     ? MOB_BY_ID[player.encounter.mobId]
     : player.targetMobId
       ? MOB_BY_ID[player.targetMobId]
       : null;
-  const active = player.mode === 'hunting';
-  const resting = player.mode === 'resting';
+  const playerHit = combat?.target === 'player' && combat.kind === 'attack',
+    enemyHit = combat?.target === 'enemy' && combat.kind === 'attack';
+  const drop = loot ? ITEM_BY_ID[loot.itemId] : null;
+  const amount = combat?.missed
+    ? 'Мимо'
+    : combat?.healing
+      ? `+${combat.healing}`
+      : combat?.kind === 'ward'
+        ? 'Оберег'
+        : combat?.damage
+          ? `−${combat.damage}`
+          : combat?.kind === 'victory'
+            ? 'Победа'
+            : combat?.kind === 'defeat'
+              ? 'Поражение'
+              : '';
   return (
-    <section className="panel battle-panel">
-      <PanelTitle
-        icon={Swords}
-        aside={
-          <span className={`status-badge ${active ? 'live' : ''}`}>
-            <i />
-            {active ? 'В БОЮ' : resting ? 'ОТДЫХ' : 'НА ПРИВАЛЕ'}
-          </span>
-        }
-      >
-        Приключение
-      </PanelTitle>
-      <div className={`battle-art ${active ? 'is-active' : ''}`}>
-        <div className="battle-fighter hero-fighter">
-          <img src="/art/characters.png" alt="Паладин Альянса" />
-        </div>
-        <div className={`battle-fighter enemy-fighter enemy-${mob?.id || 'wolf'}`}>
-          {mob?.id === 'defias' ? (
-            <div className="defias-emblem">
-              <Skull size={55} strokeWidth={1} />
-              <Swords size={76} strokeWidth={0.8} />
-            </div>
-          ) : (
-            <img src="/art/characters.png" alt={mob?.name || 'Лесной волк'} />
-          )}
-        </div>
-        <span className="battle-location">ЭЛВИННСКИЙ ЛЕС</span>
-        <div className="battle-vs">
-          <span>{player.name}</span>
-          <b>✦</b>
-          <span>{mob?.name || 'Тихая тропа'}</span>
-        </div>
+    <section className="battle-panel">
+      <div className="battle-heading">
+        <span>
+          <MapPin size={13} />
+          {mob?.location || 'Берёзовый Брод'}
+        </span>
+        <span className={`mode-indicator ${player.mode}`}>
+          {player.mode === 'hunting'
+            ? 'Автобой'
+            : player.mode === 'resting'
+              ? 'У костра'
+              : 'Привал'}
+          <i />
+        </span>
       </div>
-      <div className="battle-body">
-        <div className="battle-headline">
-          <span className="eyebrow">
-            {resting ? 'ВОССТАНОВЛЕНИЕ СИЛ' : active ? 'ОХОТА ПРОДОЛЖАЕТСЯ' : 'ВАШЕ ПРИКЛЮЧЕНИЕ'}
-          </span>
-          <h3>{resting ? 'Под защитой Света' : active ? mob?.name : 'В путь, защитник'}</h3>
-          <p>
-            {resting
-              ? 'Здоровье и мана восстанавливаются автоматически.'
-              : active
-                ? `Раунд ${player.encounter?.round ?? 0} · ${mob?.location ?? 'Североземье'}`
-                : 'Выберите противника на окрестных тропах.'}
-          </p>
+      <div
+        data-testid="battle-scene"
+        className={`battle-arena region-${mob?.id || 'camp'}`}
+        key={player.targetMobId || 'camp'}
+      >
+        <ForestBackdrop />
+        <div className="arena-mist" />
+        <div
+          className={`fighter hero-fighter ${combat?.source === 'player' && combat.kind === 'attack' ? 'attacking' : ''} ${playerHit ? 'hit' : ''} ${combat?.kind === 'heal' ? 'healing' : ''}`}
+          key={`hero-${combat?.id || 0}`}
+        >
+          <CharacterSprite player={player} />
+          {combat?.target === 'player' && amount && (
+            <div
+              className={`floating-damage ${combat.healing ? 'heal' : ''} ${combat.critical ? 'critical' : ''}`}
+            >
+              {amount}
+              {combat.critical && <small>Критический удар</small>}
+            </div>
+          )}
+          <span className="fighter-name">{player.name}</span>
         </div>
-        {player.encounter && (
-          <Meter
-            value={player.encounter.hp}
-            max={player.encounter.maxHp}
-            tone="red"
-            label={mob?.name || 'Противник'}
-          />
+        <div
+          className={`fighter foe-fighter ${combat?.source === 'enemy' && combat.kind === 'attack' ? 'attacking' : ''} ${enemyHit ? 'hit' : ''}`}
+          key={`foe-${combat?.id || 0}`}
+        >
+          {mob ? (
+            <EnemySprite mobId={mob.id} />
+          ) : (
+            <svg className="campfire-art" viewBox="0 0 150 200" aria-label="Костёр">
+              <ellipse cx="75" cy="170" rx="53" ry="11" fill="#111b13" />
+              <path
+                d="M38 158L110 176M36 176L110 157"
+                stroke="#5b3e29"
+                strokeWidth="14"
+                strokeLinecap="round"
+              />
+              <path
+                d="M51 155Q21 120 56 86L58 117Q84 89 79 55Q130 119 103 153Q81 178 51 155Z"
+                fill="#b77b34"
+              />
+              <path d="M65 154Q46 135 69 110L75 127 90 113Q109 155 80 162Z" fill="#dbb36a" />
+            </svg>
+          )}
+          {combat?.target === 'enemy' && amount && (
+            <div className={`floating-damage ${combat.critical ? 'critical' : ''}`}>
+              {amount}
+              {combat.critical && <small>Критический удар</small>}
+            </div>
+          )}
+          <span className="fighter-name">{mob?.name || 'Костёр'}</span>
+        </div>
+        {!mob && <div className="camp-label">Выберите тропу на карте</div>}
+        {combat?.ability && combat.ability !== 'basicAttack' && (
+          <span className="ability-flash" key={combat.id}>
+            {SKILL_BY_ID[combat.ability]?.name}
+          </span>
         )}
-        <div className="player-meters">
+        {loot && drop && (
+          <div
+            data-testid="loot-notice"
+            className={`loot-notice rarity-${drop.rarity}`}
+            role="status"
+          >
+            <ItemSymbol item={drop} />
+            <div className="loot-notice-copy">
+              <small>
+                {rarityNames[drop.rarity]} · {loot.source === 'quest' ? 'награда' : 'добыча'}
+              </small>
+              <strong>{drop.name}</strong>
+              <div className="loot-actions">
+                {loot.instanceId && (
+                  <button
+                    disabled={
+                      pending ||
+                      drop.requiredLevel > player.level ||
+                      player.equipment[drop.slot] === loot.instanceId
+                    }
+                    onClick={async () => {
+                      if (await act({ type: 'equip', itemInstanceId: loot.instanceId! }))
+                        dismissLoot();
+                    }}
+                  >
+                    Надеть
+                  </button>
+                )}
+                <button onClick={openBag}>В сумку</button>
+              </div>
+            </div>
+            <button className="close-notice" onClick={dismissLoot} aria-label="Скрыть добычу">
+              <X size={15} />
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="battle-hud">
+        <div className="health-row">
           <Meter value={player.hp} max={stats.maxHp} label="Здоровье" />
-          <Meter value={player.mana} max={stats.maxMana} tone="blue" label="Мана" />
+          <div className="opponent-meter">
+            {mob ? (
+              <Meter
+                value={player.encounter?.hp ?? mob.hp}
+                max={player.encounter?.maxHp || mob.hp}
+                tone="enemy"
+                label={mob.name}
+              />
+            ) : (
+              <span className="camp-status">
+                {player.mode === 'resting' ? 'Восстановление сил' : 'Тихий привал'}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="battle-power-row">
+          <Meter value={player.mana} max={stats.maxMana} tone="power" label="Сила" />
+          <span className="round-label">
+            {player.mode === 'hunting'
+              ? `Раунд ${player.encounter?.round || 0}`
+              : player.mode === 'resting'
+                ? 'Восстановление сил'
+                : 'Готов к пути'}
+          </span>
+        </div>
+        <div className="skill-hud">
+          {player.skills.loadout.map((id) => (
+            <span
+              key={id}
+              className={`skill-pill ${combat?.ability === id ? 'used' : ''}`}
+              title={SKILL_BY_ID[id].description}
+            >
+              <span>
+                {id === 'heavyStrike' ? (
+                  <Sword size={14} />
+                ) : id === 'ward' ? (
+                  <Shield size={14} />
+                ) : (
+                  <Heart size={14} />
+                )}
+              </span>
+              <b>{SKILL_BY_ID[id].name}</b>
+              <small>
+                {player.skills.cooldowns[id] > 0 ? `${player.skills.cooldowns[id]} ход.` : 'готов'}
+              </small>
+            </span>
+          ))}
         </div>
         <div className="battle-controls">
-          {active ? (
+          {player.mode === 'hunting' ? (
             <button
               className="button primary"
               disabled={pending}
               onClick={() => void act({ type: 'stopHunt' })}
             >
               <CirclePause size={16} />
-              Остановить охоту
+              Остановить бой
             </button>
           ) : (
             <button
               className="button primary"
-              disabled={pending || resting}
+              disabled={pending || player.mode === 'resting'}
               onClick={() => void act({ type: 'startHunt', mobId: player.targetMobId || 'wolf' })}
             >
-              <Swords size={16} />
-              {resting ? 'Восстановление…' : 'Отправиться на охоту'}
+              <Sword size={16} />
+              {player.mode === 'resting' ? 'Восстановление…' : 'Начать бой'}
             </button>
           )}
           <button
-            className="button quiet"
-            disabled={pending || resting}
+            className="button"
+            disabled={pending || player.mode === 'resting'}
             onClick={() => void act({ type: 'rest' })}
-            title="Отдохнуть и восстановить здоровье и ману"
           >
-            <Heart size={15} />
+            <Flame size={16} />
             Отдых
           </button>
         </div>
-        <p className="idle-note">
-          <span className="small-dot" />
-          Бой и добыча продолжаются, пока вы отсутствуете.
+        <p className="battle-note">
+          {player.mode === 'hunting'
+            ? 'Бой продолжается, когда вы не в игре.'
+            : 'Навыки срабатывают автоматически.'}
         </p>
       </div>
     </section>
   );
 }
-export function QuestsPanel({ player, pending, act, full = false }: Props & { full?: boolean }) {
-  const completeCount = player.quests.filter((q) => q.status === 'completed').length;
+export function QuestsPanel({ player, pending, act }: GameProps) {
   return (
-    <section className={`panel quests-panel ${full ? 'full-quests' : ''}`}>
-      <PanelTitle
-        icon={ScrollText}
-        aside={
-          <span className="tiny-label">
-            {completeCount} / {QUESTS.length}
-          </span>
-        }
-      >
-        Журнал заданий
-      </PanelTitle>
-      <p className="panel-description">Североземье нуждается в вас.</p>
+    <section className="view-panel quest-view">
+      <header className="panel-heading">
+        <span>ПОРУЧЕНИЯ ЖИТЕЛЕЙ</span>
+        <h2>Задания</h2>
+      </header>
       <div className="quest-list">
         {QUESTS.map((quest) => {
-          const progress = player.quests.find((q) => q.questId === quest.id);
-          const done = progress?.status === 'completed';
-          const ready = !!progress && progress.kills >= quest.objective.count;
-          const locked =
-            player.level < quest.requiredLevel ||
-            (!!quest.prerequisite &&
-              !player.quests.some(
-                (q) => q.questId === quest.prerequisite && q.status === 'completed',
-              ));
+          const progress = player.quests.find((q) => q.questId === quest.id),
+            done = progress?.status === 'completed',
+            ready = !!progress && progress.kills >= quest.objective.count,
+            locked =
+              player.level < quest.requiredLevel ||
+              (!!quest.prerequisite &&
+                !player.quests.some(
+                  (q) => q.questId === quest.prerequisite && q.status === 'completed',
+                ));
           return (
-            <div key={quest.id} className={`quest-card ${done ? 'finished' : ''}`}>
-              <div className="quest-title">
-                <span className={`quest-sign ${done ? 'complete' : ready ? 'ready' : ''}`}>
-                  {done ? <Check size={16} /> : progress ? '?' : '!'}
-                </span>
+            <article className={`quest-entry ${done ? 'completed' : ''}`} key={quest.id}>
+              <div className="quest-top">
                 <h3>{quest.title}</h3>
+                {done ? <Check size={16} /> : <span>ур. {quest.requiredLevel}</span>}
               </div>
-              <p>{full ? quest.description : quest.giver}</p>
+              <span className="quest-giver">{quest.giver}</span>
+              <p>{quest.description}</p>
               {progress && !done && (
-                <div className="quest-progress">
-                  <div>
-                    <span>{MOB_BY_ID[quest.objective.mobId].name}</span>
-                    <b>
-                      {Math.min(progress.kills, quest.objective.count)} / {quest.objective.count}
-                    </b>
-                  </div>
-                  <span className="quest-track">
-                    <i
-                      style={{
-                        width: `${Math.min(100, (progress.kills / quest.objective.count) * 100)}%`,
-                      }}
-                    />
-                  </span>
-                </div>
+                <Meter
+                  value={progress.kills}
+                  max={quest.objective.count}
+                  tone="experience"
+                  label={MOB_BY_ID[quest.objective.mobId].name}
+                />
               )}
-              <div className="quest-rewards">
+              <div className="quest-bottom">
                 <span>
-                  <Sparkles size={12} />
-                  {quest.rewards.xp} опыта
+                  {quest.rewards.xp} опыта · <Money copper={quest.rewards.copper} />
                 </span>
-                <Money copper={quest.rewards.copper} />
-              </div>
-              {done ? (
-                <span className="quest-completed">
-                  <Check size={13} />
-                  Задание выполнено
-                </span>
-              ) : progress ? (
-                ready ? (
-                  <button
-                    className="button quest-button"
-                    disabled={pending}
-                    onClick={() => void act({ type: 'turnInQuest', questId: quest.id })}
-                  >
-                    Получить награду
-                    <ChevronRight size={14} />
-                  </button>
+                {done ? (
+                  <span>Выполнено</span>
+                ) : progress ? (
+                  ready ? (
+                    <button
+                      className="button primary"
+                      disabled={pending}
+                      onClick={() => void act({ type: 'turnInQuest', questId: quest.id })}
+                    >
+                      Забрать награду
+                    </button>
+                  ) : (
+                    <span className="muted">В процессе</span>
+                  )
                 ) : (
-                  <span className="quest-active">
-                    <span className="small-dot" />В процессе
-                  </span>
-                )
-              ) : (
-                <button
-                  className="button quest-button"
-                  disabled={pending || locked}
-                  onClick={() => void act({ type: 'acceptQuest', questId: quest.id })}
-                >
-                  {locked
-                    ? `Требуется ${player.level < quest.requiredLevel ? `${quest.requiredLevel} уровень` : 'предыдущее задание'}`
-                    : 'Принять задание'}
-                  {!locked && <ChevronRight size={14} />}
-                </button>
-              )}
-            </div>
+                  <button
+                    className="button"
+                    disabled={pending || locked}
+                    onClick={() => void act({ type: 'acceptQuest', questId: quest.id })}
+                  >
+                    {locked ? 'Пока недоступно' : 'Принять'}
+                  </button>
+                )}
+              </div>
+            </article>
           );
         })}
       </div>
     </section>
   );
 }
-export function Journal({
-  player,
-  expanded = false,
-}: {
-  player: PublicPlayerState;
-  expanded?: boolean;
-}) {
-  const logs = [...player.log].reverse().slice(0, expanded ? 50 : 5);
+export function Inventory({ player, pending, act }: GameProps) {
+  const [selected, setSelected] = useState<string | null>(null);
   return (
-    <section className={`panel journal ${expanded ? 'expanded' : ''}`}>
-      <PanelTitle
-        icon={BookOpen}
-        aside={
-          <span className="journal-live">
-            <i />
-            ОБНОВЛЯЕТСЯ
-          </span>
-        }
-      >
-        Хроника приключений
-      </PanelTitle>
-      <div className="log-list">
-        {logs.length ? (
-          logs.map((log) => (
-            <div className={`log-row log-${log.kind}`} key={log.id}>
+    <section className="view-panel bag-view">
+      <header className="panel-heading">
+        <span>СНАРЯЖЕНИЕ И ТРОФЕИ</span>
+        <h2>
+          Сумка <small>{player.inventory.length}/100</small>
+        </h2>
+        <RarityLegend />
+      </header>
+      <div className="item-list">
+        {[...player.inventory].reverse().map((instance) => {
+          const item = ITEM_BY_ID[instance.itemId],
+            equipped = player.equipment[item.slot] === instance.instanceId,
+            open = selected === instance.instanceId;
+          return (
+            <article
+              data-testid={`bag-item-${instance.itemId}`}
+              className={`item-entry rarity-${item.rarity} ${open ? 'open' : ''}`}
+              key={instance.instanceId}
+            >
+              <button
+                className="item-heading"
+                onClick={() => setSelected(open ? null : instance.instanceId)}
+                aria-expanded={open}
+              >
+                <ItemSymbol item={item} />
+                <span>
+                  <strong>{item.name}</strong>
+                  <small>
+                    {rarityNames[item.rarity]} · {slotNames[item.slot]} · ур. {item.requiredLevel}
+                  </small>
+                </span>
+                {equipped ? <Check size={16} /> : <ArrowRight size={15} />}
+              </button>
+              {open && (
+                <div className="item-detail">
+                  <p>{item.description}</p>
+                  <strong>
+                    <StatText item={item} />
+                  </strong>
+                  <button
+                    className="button"
+                    disabled={pending || player.level < item.requiredLevel}
+                    onClick={() =>
+                      void act(
+                        equipped
+                          ? { type: 'unequip', slot: item.slot }
+                          : { type: 'equip', itemInstanceId: instance.instanceId },
+                      )
+                    }
+                  >
+                    {equipped
+                      ? 'Снять'
+                      : player.level < item.requiredLevel
+                        ? `Нужен ${item.requiredLevel} уровень`
+                        : 'Надеть'}
+                  </button>
+                </div>
+              )}
+            </article>
+          );
+        })}
+        {!player.inventory.length && (
+          <p className="empty-state">Сумка пуста. Добыча появится после боя.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+export function HeroPanel({ player, pending, act }: GameProps) {
+  const stats = getDerivedStats(player);
+  return (
+    <section className="view-panel hero-view">
+      <header className="panel-heading">
+        <span>ЧЕЛОВЕК · {player.appearance.gender === 'female' ? 'РАТНИЦА' : 'РАТНИК'}</span>
+        <h2>
+          {player.name} <small>ур. {player.level}</small>
+        </h2>
+      </header>
+      <div className="hero-sheet">
+        <div className="hero-preview">
+          <CharacterSprite player={player} />
+        </div>
+        <div className="hero-stats">
+          {[
+            ['Атака', stats.attack],
+            ['Защита', stats.armor],
+            ['Крит. шанс', `${Math.round(stats.critChance * 100)}%`],
+            ['Точность', `${Math.round(stats.hitChance * 100)}%`],
+            ['Победы', player.totalKills],
+            ['Поражения', player.totalDeaths],
+          ].map(([name, value]) => (
+            <span key={name}>
+              <small>{name}</small>
+              <b>{value}</b>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="equipped-list">
+        {(['weapon', 'armor', 'trinket'] as const).map((slot) => {
+          const item = equippedItem(player, slot);
+          return (
+            <div
+              data-testid={`equipment-${slot}`}
+              className={`equipment-row rarity-${item?.rarity || 'common'}`}
+              key={slot}
+            >
+              {item ? (
+                <ItemSymbol item={item} />
+              ) : (
+                <span className="empty-equipment">
+                  <Shield size={21} />
+                </span>
+              )}
+              <div>
+                <small>
+                  {slotNames[slot]}
+                  {item && ` · ${rarityNames[item.rarity]}`}
+                </small>
+                <strong>{item?.name || 'Не надето'}</strong>
+                {item && (
+                  <span>
+                    <StatText item={item} />
+                  </span>
+                )}
+              </div>
+              {item && (
+                <button
+                  className="text-button"
+                  disabled={pending}
+                  onClick={() => void act({ type: 'unequip', slot })}
+                >
+                  Снять
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <RarityLegend />
+    </section>
+  );
+}
+export function SkillsPanel({ player, pending, act }: GameProps) {
+  const toggle = (id: SkillId) => {
+    const chosen = player.skills.loadout;
+    void act({
+      type: 'setSkills',
+      skills: chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id],
+    });
+  };
+  return (
+    <section className="view-panel skills-view">
+      <header className="panel-heading">
+        <span>АВТОМАТИЧЕСКИЕ ПРИЁМЫ</span>
+        <h2>
+          Навыки <small>{player.skills.loadout.length}/2</small>
+        </h2>
+        <p>Выберите два приёма. Они сами применяются в бою.</p>
+      </header>
+      <div className="skills-list">
+        {SKILLS.map((skill) => {
+          const selected = player.skills.loadout.includes(skill.id),
+            locked = player.level < skill.requiredLevel;
+          return (
+            <article className={`skill-entry ${selected ? 'selected' : ''}`} key={skill.id}>
+              <div className="skill-title">
+                <span className="skill-glyph">
+                  {skill.id === 'heavyStrike' ? (
+                    <Sword />
+                  ) : skill.id === 'ward' ? (
+                    <Shield />
+                  ) : (
+                    <Heart />
+                  )}
+                </span>
+                <div>
+                  <h3>{skill.name}</h3>
+                  <small>
+                    {skill.manaCost} силы · {skill.cooldownTurns} ход. откат
+                  </small>
+                </div>
+                <button
+                  data-testid={`skill-${skill.id}`}
+                  className={`skill-toggle ${selected ? 'selected' : ''}`}
+                  aria-label={`${selected ? 'Убрать' : 'Выбрать'} навык ${skill.name}`}
+                  aria-pressed={selected}
+                  disabled={pending || locked || (!selected && player.skills.loadout.length >= 2)}
+                  onClick={() => toggle(skill.id)}
+                >
+                  {selected ? <Check size={15} /> : '+'}
+                </button>
+              </div>
+              <p>{skill.description}</p>
+              <span className="skill-policy">
+                {locked
+                  ? `Откроется на ${skill.requiredLevel} уровне`
+                  : skill.policy === 'healthBelow'
+                    ? `При здоровье ниже ${Math.round((skill.healthBelow || 0) * 100)}%`
+                    : 'Применяется при готовности'}
+              </span>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+export function Journal({ player }: { player: PublicPlayerState }) {
+  const [filter, setFilter] = useState<'events' | 'drops'>('events');
+  return (
+    <section className="view-panel events-view">
+      <header className="panel-heading">
+        <span>ЛЕТОПИСЬ ГЕРОЯ</span>
+        <h2>События</h2>
+        <div className="segmented">
+          <button
+            className={filter === 'events' ? 'active' : ''}
+            onClick={() => setFilter('events')}
+          >
+            Хроника
+          </button>
+          <button className={filter === 'drops' ? 'active' : ''} onClick={() => setFilter('drops')}>
+            Последняя добыча
+          </button>
+        </div>
+      </header>
+      {filter === 'events' ? (
+        <div className="event-list">
+          {[...player.log].reverse().map((log) => (
+            <div className={`event-row event-${log.kind}`} key={log.id}>
               <time>
                 {new Date(log.at).toLocaleTimeString('ru-RU', {
                   hour: '2-digit',
                   minute: '2-digit',
                 })}
               </time>
-              <span className="log-icon">
-                {log.kind === 'loot' ? (
-                  <Trophy size={13} />
-                ) : log.kind === 'quest' ? (
-                  <ScrollText size={13} />
-                ) : log.kind === 'level' ? (
-                  <Sparkles size={13} />
-                ) : (
-                  <Sword size={13} />
-                )}
-              </span>
-              <span>{log.message}</span>
+              <p>{log.message}</p>
             </div>
-          ))
-        ) : (
-          <div className="empty-log">
-            Ваша история начинается здесь. Отправляйтесь на первую охоту.
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-export function Inventory({
-  player,
-  pending,
-  act,
-  character = false,
-}: Props & { character?: boolean }) {
-  const stats = getDerivedStats(player);
-  return (
-    <div className="inventory-view">
-      {character && (
-        <section className="panel character-sheet">
-          <div className="character-portrait">
-            <img src="/art/characters.png" alt="Паладин" />
-            <span className="portrait-level">{player.level}</span>
-          </div>
-          <span className="eyebrow">ЧЕЛОВЕК · ПАЛАДИН</span>
-          <h2>{player.name}</h2>
-          <p>Защитник Североземья</p>
-          <Meter value={player.xp} max={xpForNextLevel(player.level)} tone="gold" label="Опыт" />
-          <div className="stat-grid">
-            {[
-              [Sword, 'Атака', stats.attack],
-              [Shield, 'Защита', stats.armor],
-              [Heart, 'Здоровье', stats.maxHp],
-              [Sparkles, 'Мана', stats.maxMana],
-            ].map(([Icon, label, value]) => {
-              const I = Icon as typeof Sword;
-              return (
-                <div key={String(label)}>
-                  <I size={19} />
-                  <b>{String(value)}</b>
-                  <span>{String(label)}</span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-      <section className="panel gear-panel">
-        <PanelTitle
-          icon={character ? Shield : Trophy}
-          aside={<span className="tiny-label">{player.inventory.length} ПРЕДМЕТОВ</span>}
-        >
-          {character ? 'Снаряжение' : 'Походная сумка'}
-        </PanelTitle>
-        <p className="panel-description">
-          {character
-            ? 'Свет — ваш щит. Хорошая сталь тоже пригодится.'
-            : 'Трофеи, снаряжение и маленькие победы.'}
-        </p>
-        {character && (
-          <div className="equipment-slots">
-            {(['weapon', 'armor', 'trinket'] as const).map((slot) => {
-              const equipped = player.inventory.find(
-                (i) => i.instanceId === player.equipment[slot],
-              );
-              const item = equipped ? ITEM_BY_ID[equipped.itemId] : null;
-              return (
-                <div className="equipment-slot" key={slot}>
-                  {item ? (
-                    <ItemSymbol item={item} />
-                  ) : (
-                    <span className="empty-slot">
-                      <Shield size={23} />
-                    </span>
-                  )}
-                  <div>
-                    <span className="eyebrow">{slotNames[slot]}</span>
-                    <strong>{item?.name || 'Не экипировано'}</strong>
-                    {item && (
-                      <small>
-                        <StatText item={item} />
-                      </small>
-                    )}
-                  </div>
-                  {item && (
-                    <button
-                      className="text-button"
-                      disabled={pending}
-                      onClick={() => void act({ type: 'unequip', slot })}
-                    >
-                      Снять
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-        <div className="inventory-grid">
-          {player.inventory.map((instance) => {
-            const item = ITEM_BY_ID[instance.itemId];
-            const equipped = player.equipment[item.slot] === instance.instanceId;
+          ))}
+        </div>
+      ) : (
+        <div className="drops-list">
+          {[...player.lootEvents].reverse().map((event) => {
+            const item = ITEM_BY_ID[event.itemId];
             return (
-              <article className={`inventory-item ${item.rarity}`} key={instance.instanceId}>
+              <div className={`drop-row rarity-${item.rarity}`} key={event.id}>
                 <ItemSymbol item={item} />
-                <div>
-                  <span className="eyebrow">
-                    {slotNames[item.slot]} · ур. {item.requiredLevel}
-                  </span>
-                  <h3>{item.name}</h3>
-                  <p>{item.description}</p>
+                <span>
+                  <strong>{item.name}</strong>
                   <small>
-                    <StatText item={item} />
+                    {rarityNames[item.rarity]} ·{' '}
+                    {event.salvaged
+                      ? 'Обменян на монеты'
+                      : event.source === 'quest'
+                        ? 'Награда за задание'
+                        : 'Получен в бою'}
                   </small>
-                </div>
-                <button
-                  className={`button ${equipped ? 'equipped-button' : 'quest-button'}`}
-                  disabled={pending || item.requiredLevel > player.level}
-                  onClick={() =>
-                    void act(
-                      equipped
-                        ? { type: 'unequip', slot: item.slot }
-                        : { type: 'equip', itemInstanceId: instance.instanceId },
-                    )
-                  }
-                >
-                  {equipped ? (
-                    <>
-                      <Check size={13} />
-                      Надето · снять
-                    </>
-                  ) : item.requiredLevel > player.level ? (
-                    'Уровень слишком низкий'
-                  ) : (
-                    'Надеть'
-                  )}
-                </button>
-              </article>
+                </span>
+                <time>
+                  {new Date(event.timestamp).toLocaleTimeString('ru-RU', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </time>
+              </div>
             );
           })}
+          {!player.lootEvents.length && <p className="empty-state">Пока нет добычи.</p>}
         </div>
-        {!player.inventory.length && (
-          <p className="empty-log">В сумке пока пусто. С противников выпадает снаряжение.</p>
-        )}
-      </section>
-    </div>
+      )}
+    </section>
   );
 }

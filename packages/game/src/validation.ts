@@ -1,5 +1,5 @@
-import { MOB_BY_ID, QUEST_BY_ID } from './content.js';
-import type { GameAction } from './types.js';
+import { DEFAULT_APPEARANCE, MOB_BY_ID, QUEST_BY_ID, SKILL_BY_ID } from './content.js';
+import type { Appearance, GameAction } from './types.js';
 
 export class GameError extends Error {
   constructor(
@@ -9,6 +9,29 @@ export class GameError extends Error {
     super(message);
     this.name = 'GameError';
   }
+}
+
+export function parseAppearance(input: unknown): Appearance {
+  if (input === undefined) return { ...DEFAULT_APPEARANCE };
+  if (!input || typeof input !== 'object' || Array.isArray(input))
+    throw new GameError('INVALID_APPEARANCE', 'Выберите внешность персонажа.');
+  const value = input as Record<string, unknown>;
+  const options: Record<keyof Appearance, string[]> = {
+    gender: ['male', 'female'],
+    hair: ['dark', 'fair', 'red'],
+    hairStyle: ['short', 'braid'],
+    skin: ['light', 'tan'],
+    mark: ['none', 'scar'],
+  };
+  if (
+    Object.keys(value).length !== Object.keys(options).length ||
+    Object.keys(value).some((key) => !Object.hasOwn(options, key))
+  )
+    throw new GameError('INVALID_APPEARANCE', 'Внешность содержит недопустимые параметры.');
+  for (const [key, allowed] of Object.entries(options))
+    if (typeof value[key] !== 'string' || !allowed.includes(value[key] as string))
+      throw new GameError('INVALID_APPEARANCE', 'Выберите доступные параметры внешности.');
+  return { ...value } as unknown as Appearance;
 }
 
 /** Only these intent fields are accepted; all progression is calculated on the server. */
@@ -42,6 +65,18 @@ export function parseAction(input: unknown): GameAction {
       keys = ['type', 'slot'];
       if (!['weapon', 'armor', 'trinket'].includes(value.slot as string))
         throw new GameError('INVALID_ACTION', 'Выберите доступную ячейку экипировки.');
+      break;
+    case 'setSkills':
+      keys = ['type', 'skills'];
+      if (
+        !Array.isArray(value.skills) ||
+        value.skills.length > 2 ||
+        new Set(value.skills).size !== value.skills.length ||
+        value.skills.some(
+          (skill) => typeof skill !== 'string' || !Object.hasOwn(SKILL_BY_ID, skill),
+        )
+      )
+        throw new GameError('INVALID_SKILLS', 'Выберите не более двух разных доступных умений.');
       break;
     case 'stopHunt':
     case 'rest':

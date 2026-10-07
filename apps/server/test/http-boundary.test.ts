@@ -90,4 +90,48 @@ describe('HTTP boundary rejects requests before touching PostgreSQL', () => {
     expect(response.statusCode).toBe(400);
     expect(connect).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { gender: 'admin' },
+    { hair: '__proto__' },
+    { hairStyle: 'unbounded' },
+    { skin: 'transparent' },
+    { mark: 'script' },
+    { level: 60 },
+  ])('rejects invalid or injected appearance fields (%j)', async (invalidFields) => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/session',
+      remoteAddress: '127.0.0.2',
+      headers: { origin: 'https://game.example' },
+      payload: {
+        name: 'Ратница',
+        appearance: {
+          gender: 'female',
+          hair: 'fair',
+          hairStyle: 'braid',
+          skin: 'tan',
+          mark: 'scar',
+          ...invalidFields,
+        },
+      },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(connect).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { skills: ['heavyStrike', 'heavyStrike'] },
+    { skills: ['heavyStrike', 'ward', 'mend'] },
+    { skills: ['unknown-skill'] },
+  ])('rejects malformed skill loadout before querying a player (%j)', async ({ skills }) => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/game/action',
+      headers: { origin: 'https://game.example' },
+      payload: { idempotencyKey: randomUUID(), action: { type: 'setSkills', skills } },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(connect).not.toHaveBeenCalled();
+  });
 });

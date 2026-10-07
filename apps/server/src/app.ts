@@ -11,7 +11,9 @@ import {
   applyAction,
   createPlayer,
   GameError,
+  migratePlayerState,
   parseAction,
+  parseAppearance,
   type PlayerState,
   type PublicPlayerState,
 } from '@azeroth/game';
@@ -34,6 +36,10 @@ const sessionRequestSchema = z
       .min(2)
       .max(24)
       .regex(/^[\p{L}\p{N} '\-]+$/u)
+      .optional(),
+    appearance: z
+      .unknown()
+      .transform((value) => parseAppearance(value))
       .optional(),
   })
   .strict();
@@ -159,20 +165,24 @@ export function buildApp(options: AppOptions) {
       await client.query('BEGIN');
       // All state reads and writes take the same player lock, so elapsed time and
       // combat rewards are applied exactly once even across multiple tabs.
-      const result = await client.query<{ state: PlayerState }>(
+      const result = await client.query<{ state: unknown }>(
         `SELECT p.state FROM players p
          JOIN guest_sessions s ON s.player_id = p.id
          WHERE s.token_hash = $1 AND s.expires_at > now()
          FOR UPDATE OF p`,
         [tokenHash],
       );
-      const player = result.rows[0]?.state;
-      if (!player)
+      const stored = result.rows[0]?.state;
+      if (!stored)
         throw new HttpError(
           401,
           'UNAUTHENTICATED',
           'Гостевая сессия истекла. Начните новое приключение.',
         );
+      const player = migratePlayerState(stored);
+      const previousVersion =
+        typeof stored === 'object' ? Reflect.get(stored, 'schemaVersion') : undefined;
+      if (previousVersion !== player.schemaVersion) await savePlayer(client, player);
       const output = await work(client, player);
       await client.query('COMMIT');
       return output;
@@ -225,6 +235,7 @@ export function buildApp(options: AppOptions) {
         name: input.name ?? 'Странник',
         now: timestamp,
         rngSeed: randomBytes(4).readUInt32LE(),
+        appearance: input.appearance,
       });
       const token = randomBytes(32).toString('base64url');
       const client = await pool.connect();
@@ -273,20 +284,40 @@ export function buildApp(options: AppOptions) {
     return withPlayer(request, async (client, stored) => {
       const previous = await client.query<{
         action_hash: string;
-        response: { player: PublicPlayerState };
+        response: { player: Omit<PublicPlayerState, 'schemaVersion'> & { schemaVersion: number } };
       }>(
         'SELECT action_hash, response FROM action_receipts WHERE player_id = $1 AND idempotency_key = $2',
         [stored.id, idempotencyKey],
       );
       if (previous.rows[0]) {
-        if (previous.rows[0].action_hash !== actionHash) {
+        const receipt = previous.rows[0];
+        const oldSchema = receipt.response.player.schemaVersion !== stored.schemaVersion;
+        // The earliest v1 API encoded intent fields with `type` first. Honor
+        // that historical hash only while upgrading its old-schema receipt.
+        const { type, ...intentFields } = action;
+        const historicalHash = digest(JSON.stringify({ type, ...intentFields }));
+        const historicalMatch =
+          receipt.response.player.schemaVersion === 1 && receipt.action_hash === historicalHash;
+        if (receipt.action_hash !== actionHash && !(oldSchema && historicalMatch)) {
           throw new HttpError(
             409,
             'IDEMPOTENCY_CONFLICT',
             'Этот ключ запроса уже использован для другого действия.',
           );
         }
-        return { player: publicPlayer(previous.rows[0].response.player) };
+        if (oldSchema) {
+          // Replaying a receipt must never re-award an old quest or re-equip an
+          // item. Advance the current save and replace only the obsolete DTO.
+          const player = advancePlayer(stored, now());
+          await savePlayer(client, player);
+          const response = { player: publicPlayer(player) };
+          await client.query(
+            'UPDATE action_receipts SET action_hash = $1, response = $2::jsonb WHERE player_id = $3 AND idempotency_key = $4',
+            [actionHash, JSON.stringify(response), player.id, idempotencyKey],
+          );
+          return response;
+        }
+        return { player: publicPlayer(receipt.response.player as PublicPlayerState) };
       }
       const timestamp = now();
       const player = applyAction(advancePlayer(stored, timestamp), action, timestamp);

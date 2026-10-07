@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { GameAction, PublicPlayerState } from '@azeroth/game';
+import type { Appearance, GameAction, PublicPlayerState } from '@azeroth/game';
 
 type ResponseBody = { player?: PublicPlayerState; error?: string; code?: string };
 async function request(path: string, body?: unknown): Promise<ResponseBody> {
@@ -73,9 +73,9 @@ export function useGame() {
     const tick = async () => {
       if (!active) return;
       if (!document.hidden) await refresh();
-      if (active) timer = setTimeout(tick, 2500);
+      if (active) timer = setTimeout(tick, 1500);
     };
-    timer = setTimeout(tick, 2500);
+    timer = setTimeout(tick, 1500);
     const onVisible = () => {
       if (!document.hidden && active) void refresh();
     };
@@ -127,7 +127,8 @@ export function useGame() {
       setError(null);
       return refresh();
     },
-    create: (name: string) => mutate('/api/session', { name }),
+    create: (name: string, appearance?: Appearance) =>
+      mutate('/api/session', { name, ...(appearance ? { appearance } : {}) }),
     act: (action: GameAction) =>
       mutate('/api/game/action', { idempotencyKey: crypto.randomUUID(), action }),
   };
